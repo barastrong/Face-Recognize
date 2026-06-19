@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Admin · Face ID{% endblock %}
+{% block title_short %}<i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i> Dashboard{% endblock %}
+{% block content %}
+<style>
+  @media (max-width: 600px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><i data-lucide="layout-dashboard" style="width:20px;height:20px;"></i> Dashboard Admin</h1>
+    <div class="page-sub">Rekap absensi hari ini</div>
+  </div>
+</div>
+
+<div class="grid-4" style="margin-bottom:20px;">
+  <div class="card metric">
+    <div class="metric-icon bg-accent"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
+    <div class="metric-num c-accent">{{ total_karyawan }}</div>
+    <div class="metric-lbl">Total Karyawan</div>
+  </div>
+  <div class="card metric">
+    <div class="metric-icon bg-green"><i data-lucide="log-in" style="width:18px;height:18px;"></i></div>
+    <div class="metric-num c-green">{{ n_masuk }}</div>
+    <div class="metric-lbl">Masuk Hari Ini</div>
+  </div>
+  <div class="card metric">
+    <div class="metric-icon bg-amber"><i data-lucide="log-out" style="width:18px;height:18px;"></i></div>
+    <div class="metric-num c-amber">{{ n_pulang }}</div>
+    <div class="metric-lbl">Pulang Hari Ini</div>
+  </div>
+  <div class="card metric">
+    <div class="metric-icon bg-red"><i data-lucide="user-x" style="width:18px;height:18px;"></i></div>
+    <div class="metric-num c-red">{{ total_karyawan - n_masuk }}</div>
+    <div class="metric-lbl">Belum Absen</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i data-lucide="table-2" style="width:16px;height:16px;"></i> Absensi Hari Ini</div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>No</th><th>Nama</th><th>NIP</th><th>Tipe</th><th>Waktu</th><th>Confidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in absensi %}
+        <tr>
+          <td class="td-muted">{{ loop.index }}</td>
+          <td><strong>{{ a.nama }}</strong></td>
+          <td class="td-muted">{{ a.nip }}</td>
+          <td><span class="badge badge-{{ a.tipe }}">{{ a.tipe|upper }}</span></td>
+          <td>{{ a.waktu[11:16] if a.waktu else '-' }}</td>
+          <td>{{ "%.1f"|format(a.confidence * 100) }}%</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">
+            Belum ada absensi hari ini
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

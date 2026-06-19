@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}User Login · Face ID{% endblock %}
+{% block title_short %}<i data-lucide="shield-check" style="width:16px;height:16px;"></i> Kelola Users{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><i data-lucide="shield-check" style="width:20px;height:20px;"></i> Kelola User Login</h1>
+    <div class="page-sub">Buat dan hapus akun login untuk karyawan &amp; admin</div>
+  </div>
+</div>
+
+<div class="grid-2" style="align-items:start;">
+
+  <!-- Form tambah user -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="user-round-plus" style="width:16px;height:16px;"></i> Tambah User Baru</div>
+    </div>
+    <form method="POST" action="{{ url_for('admin_tambah_user') }}">
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input class="form-control" type="email" name="email" required placeholder="cth: budi@perusahaan.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-control" type="text" name="username" placeholder="cth: budi.santoso">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input class="form-control" type="password" name="password" required placeholder="Minimal 8 karakter">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-control" name="role">
+          <option value="karyawan">Karyawan</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">NIP <span style="color:var(--muted);font-weight:400;">(opsional)</span></label>
+        <input class="form-control" type="text" name="nip" placeholder="cth: EMP001">
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">
+        <i data-lucide="plus" style="width:15px;height:15px;"></i> Tambah User
+      </button>
+    </form>
+  </div>
+
+  <!-- List user -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="users" style="width:16px;height:16px;"></i> Daftar User</div>
+      <span style="font-size:.8rem;color:var(--muted);">{{ users|length }} user</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Username</th><th>Role</th><th>NIP</th><th>Aksi</th></tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-dim);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;">
+                  <i data-lucide="user" style="width:13px;height:13px;"></i>
+                </div>
+                <div style="min-width:0;">
+                  <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><strong>{{ u.username or '-' }}</strong></div>
+                  <div style="font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-{{ u.role }}">{{ u.role }}</span></td>
+            <td class="td-muted">{{ u.nip or '-' }}</td>
+            <td>
+              {% if u.id != session.user_id %}
+              <form method="POST" action="{{ url_for('admin_hapus_user', user_id=u.id) }}"
+                    onsubmit="return confirm('Hapus user {{ u.username or u.email }}?')" style="margin:0;">
+                <button class="btn btn-danger btn-sm" type="submit">
+                  <i data-lucide="trash-2" style="width:13px;height:13px;"></i> Hapus
+                </button>
+              </form>
+              {% else %}
+              <span style="display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:.78rem;">
+                <i data-lucide="check-circle" style="width:13px;height:13px;color:var(--green);"></i> Aktif
+              </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

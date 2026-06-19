@@ -1,0 +1,11 @@
+insightface
+onnxruntime
+opencv-python
+numpy
+flask
+flask-cors
+python-dotenv
+pandas
+Pillow
+openpyxl
+werkzeug

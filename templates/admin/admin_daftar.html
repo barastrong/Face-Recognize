@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Daftarkan Karyawan · Face ID{% endblock %}
+{% block title_short %}<i data-lucide="user-plus" style="width:16px;height:16px;"></i> Daftarkan Karyawan{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><i data-lucide="user-plus" style="width:20px;height:20px;"></i> Daftarkan Karyawan</h1>
+    <div class="page-sub">Upload foto untuk mendaftarkan wajah karyawan baru</div>
+  </div>
+  <a href="{{ url_for('admin_karyawan') }}" class="btn btn-outline">
+    <i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Kembali
+  </a>
+</div>
+
+<div class="grid-2" style="align-items:start;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="user-round" style="width:16px;height:16px;"></i> Data Karyawan</div>
+    </div>
+    <form method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label class="form-label">Nama Lengkap *</label>
+        <input class="form-control" type="text" name="nama" required placeholder="cth: Budi Santoso">
+      </div>
+      <div class="form-group">
+        <label class="form-label">NIP *</label>
+        <input class="form-control" type="text" name="nip" required placeholder="cth: EMP001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Divisi</label>
+        <input class="form-control" type="text" name="divisi" placeholder="cth: Engineering">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto Wajah (3–5 foto) *</label>
+        <input class="form-control" type="file" name="photos" multiple accept="image/*" required>
+        <div style="font-size:.77rem;color:var(--muted);margin-top:5px;">
+          Upload dari berbagai sudut untuk hasil terbaik.
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">
+        <i data-lucide="save" style="width:15px;height:15px;"></i> Simpan &amp; Daftarkan
+      </button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i data-lucide="lightbulb" style="width:16px;height:16px;"></i> Tips Registrasi</div>
+    </div>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;">
+      <li style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="color:var(--accent);flex-shrink:0;margin-top:1px;"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+        <span style="font-size:.86rem;color:var(--muted);">Upload <strong style="color:var(--text);">5 foto</strong> dari berbagai sudut: depan, kiri 30°, kanan 30°, atas sedikit.</span>
+      </li>
+      <li style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="color:var(--accent);flex-shrink:0;margin-top:1px;"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+        <span style="font-size:.86rem;color:var(--muted);">Pastikan <strong style="color:var(--text);">pencahayaan cukup</strong> dan wajah terlihat jelas.</span>
+      </li>
+      <li style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="color:var(--accent);flex-shrink:0;margin-top:1px;"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+        <span style="font-size:.86rem;color:var(--muted);">Hindari foto <strong style="color:var(--text);">blur</strong> atau wajah tertutup.</span>
+      </li>
+      <li style="display:flex;gap:10px;align-items:flex-start;">
+        <span style="color:var(--accent);flex-shrink:0;margin-top:1px;"><i data-lucide="check" style="width:15px;height:15px;"></i></span>
+        <span style="font-size:.86rem;color:var(--muted);">Sertakan foto <strong style="color:var(--text);">dengan kacamata</strong> jika biasa dipakai.</span>
+      </li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
