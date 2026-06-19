@@ -487,6 +487,21 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
 
             status = hitung_status(r['check_in'], jam_masuk, toleransi)
 
+            # Hitung durasi (detik) untuk kolom Time
+            check_in_ts = int(r['check_in'].timestamp()) if r['check_in'] else None
+            if r['check_in'] and r['check_out']:
+                durasi_detik = int((r['check_out'] - r['check_in']).total_seconds())
+            else:
+                durasi_detik = None
+
+            # Format durasi final untuk export (jika sudah checkout)
+            def _fmt_durasi(detik):
+                if detik is None:
+                    return '-'
+                h, rem = divmod(detik, 3600)
+                m, s   = divmod(rem, 60)
+                return f"{h:02d}:{m:02d}:{s:02d}"
+
             result.append({
                 'tanggal':    tgl_str,
                 'nip':        nip_val,
@@ -497,6 +512,9 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
                 'jam_shift_pulang': jam_pulang_str,
                 'check_in':   r['check_in'].strftime('%H:%M')  if r['check_in']  else '-',
                 'check_out':  r['check_out'].strftime('%H:%M') if r['check_out'] else '-',
+                'check_in_ts':  check_in_ts,
+                'durasi_detik': durasi_detik,
+                'durasi_fmt':   _fmt_durasi(durasi_detik),
                 'status':     status,
                 'location':   r['location'] or '-',
                 # compat lama

@@ -93,6 +93,7 @@
           <th>Jam Shift</th>
           <th>Check In</th>
           <th>Check Out</th>
+          <th>Time</th>
           <th>Status</th>
           <th>Lokasi</th>
         </tr>
@@ -127,6 +128,17 @@
               <span style="color:var(--amber);font-weight:600;">{{ a.check_out }}</span>
             {% else %}<span class="td-muted">–</span>{% endif %}
           </td>
+          <td style="white-space:nowrap;font-family:monospace;font-size:.85rem;">
+            {% if a.check_in_ts %}
+              {% if a.durasi_detik is not none %}
+                <span style="color:var(--muted);">{{ a.durasi_fmt }}</span>
+              {% else %}
+                <span class="live-timer" data-start="{{ a.check_in_ts }}">00:00:00</span>
+              {% endif %}
+            {% else %}
+              <span class="td-muted">–</span>
+            {% endif %}
+          </td>
           <td>
             {% if a.status == 'Tepat Waktu' %}
               <span class="badge badge-tepat"><i data-lucide="check" style="width:11px;height:11px;"></i> Tepat Waktu</span>
@@ -142,7 +154,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="11" style="text-align:center;color:var(--muted);padding:32px;">
+          <td colspan="12" style="text-align:center;color:var(--muted);padding:32px;">
             Tidak ada data di rentang tanggal ini
           </td>
         </tr>
@@ -151,4 +163,26 @@
     </table>
   </div>
 </div>
+
+<script>
+(function() {
+  function fmtSeconds(s) {
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+  function tick() {
+    var now = Math.floor(Date.now() / 1000);
+    document.querySelectorAll('.live-timer').forEach(function(el) {
+      var start = parseInt(el.dataset.start, 10);
+      var diff = now - start;
+      if (diff < 0) diff = 0;
+      el.textContent = fmtSeconds(diff);
+    });
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
 {% endblock %}
