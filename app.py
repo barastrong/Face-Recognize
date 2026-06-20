@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 from PIL import Image
 from flask import (Flask, render_template, request, redirect,
-                   url_for, session, jsonify, flash, send_file)
+                   url_for, session, jsonify, flash, send_file, abort)
 from werkzeug.security import check_password_hash
 from dotenv import load_dotenv
 import pandas as pd
@@ -189,6 +189,34 @@ def riwayat_absensi():
     return render_template("riwayat.html", riwayat=riwayat, karyawan_id=karyawan_id)
 
 
+@app.route("/registered_faces/<int:karyawan_id>/<filename>")
+@login_required
+def serve_face_photo(karyawan_id, filename):
+    """Serve foto referensi wajah karyawan: /registered_faces/{id}/{file}"""
+    from pathlib import Path
+    safe = Path(filename).name  # cegah path traversal
+    path = Path("registered_faces") / str(karyawan_id) / safe
+    if not path.exists() or not path.suffix.lower() in (".jpg", ".jpeg", ".png"):
+        abort(404)
+    return send_file(path, mimetype="image/jpeg")
+
+
+@app.route("/api/karyawan/<int:karyawan_id>/photos")
+@login_required
+def api_karyawan_photos(karyawan_id):
+    """Return list URL foto untuk karyawan tertentu."""
+    from pathlib import Path
+    folder = Path("registered_faces") / str(karyawan_id)
+    if not folder.exists():
+        return jsonify([])
+    urls = [
+        url_for("serve_face_photo", karyawan_id=karyawan_id, filename=f.name)
+        for f in sorted(folder.iterdir())
+        if f.suffix.lower() in (".jpg", ".jpeg", ".png")
+    ]
+    return jsonify(urls)
+
+
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
@@ -221,7 +249,8 @@ def admin_daftar_karyawan():
         except Exception as e:
             flash(f"Gagal membaca foto: {e}", "danger")
             return redirect(request.url)
-        result = engine.register(nip, nama, divisi, images)
+        result = engine.register(nip, nama, divisi, images,
+                                   base_url=request.host_url.rstrip("/"))
         flash(result["msg"], "success" if result["success"] else "danger")
         return redirect(url_for("admin_karyawan"))
     return render_template("admin/admin_daftar.html")
@@ -352,7 +381,7 @@ def admin_export():
 @app.route("/admin/users")
 @admin_required
 def admin_users():
-    return render_template("admin/admin_users.html", users=get_users())
+    return render_template("admin/admin_users.html", users=get_users(), karyawan=get_karyawan_list())
 
 @app.route("/admin/users/tambah", methods=["POST"])
 @admin_required

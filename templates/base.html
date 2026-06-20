@@ -196,19 +196,21 @@
     </div>
   </div>
   <nav class="sidebar-nav">
-    <div class="nav-label">Menu</div>
+    <div class="nav-label">Dashboard</div>
     <a href="{{ url_for('absensi') }}"
        class="nav-item {% if request.endpoint == 'absensi' %}active{% endif %}"
        onclick="closeSidebar()">
       <span class="nav-icon"><i data-lucide="clock" style="width:16px;height:16px;"></i></span>
-      Absensi
+      Dashboard
     </a>
+    <div class="nav-label">Menu
     <a href="{{ url_for('riwayat_absensi') }}"
        class="nav-item {% if request.endpoint == 'riwayat_absensi' %}active{% endif %}"
        onclick="closeSidebar()">
       <span class="nav-icon"><i data-lucide="history" style="width:16px;height:16px;"></i></span>
       Riwayat Saya
     </a>
+    </div>
     {% if session.get('role') == 'admin' %}
     <div class="nav-label">Admin</div>
     <a href="{{ url_for('admin_dashboard') }}"

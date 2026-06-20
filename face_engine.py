@@ -129,6 +129,7 @@ def init_db():
         # ── Kolom location (baru) ────────────────────────────────────────────
         cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS location VARCHAR(255)')
         cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shift_master(id) ON DELETE SET NULL')
+        cur.execute('ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS foto_urls JSONB DEFAULT \'[]\'')
         conn.commit()
         cur.close()
         conn.close()
@@ -243,7 +244,7 @@ def get_karyawan_list():
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            'SELECT id, nip, nama, divisi, terdaftar FROM karyawan ORDER BY id'
+            'SELECT id, nip, nama, divisi, terdaftar, foto_urls FROM karyawan ORDER BY id'
         )
         rows = cur.fetchall()
         cur.close(); conn.close()
@@ -253,16 +254,19 @@ def get_karyawan_list():
             "nama":      r["nama"],
             "divisi":    r["divisi"] or "-",
             "terdaftar": r["terdaftar"].strftime("%Y-%m-%d") if r["terdaftar"] else "",
+            "foto_urls": r["foto_urls"] or [],
         } for r in rows]
     except Exception as e:
         print(f"[ERROR] get_karyawan_list: {e}")
         return []
 
-def register_karyawan_db(nip_input: str, nama: str, divisi: str) -> int:
+def register_karyawan_db(nip_input: str, nama: str, divisi: str, foto_urls: list = None) -> int:
     """
     Buat atau update baris karyawan di PostgreSQL.
     Return: id karyawan (dipakai sebagai key embedding wajah).
     """
+    import json
+    foto_json = json.dumps(foto_urls or [])
     conn = get_db_connection()
     cur  = conn.cursor()
     cur.execute("SELECT id FROM karyawan WHERE nama = %s", (nama,))
@@ -270,13 +274,13 @@ def register_karyawan_db(nip_input: str, nama: str, divisi: str) -> int:
     if row:
         karyawan_id = row[0]
         cur.execute(
-            "UPDATE karyawan SET divisi = %s, nip = %s WHERE id = %s",
-            (divisi, nip_input or None, karyawan_id)
+            "UPDATE karyawan SET divisi = %s, nip = %s, foto_urls = %s WHERE id = %s",
+            (divisi, nip_input or None, foto_json, karyawan_id)
         )
     else:
         cur.execute(
-            "INSERT INTO karyawan (nama, nip, divisi) VALUES (%s, %s, %s) RETURNING id",
-            (nama, nip_input or None, divisi)
+            "INSERT INTO karyawan (nama, nip, divisi, foto_urls) VALUES (%s, %s, %s, %s) RETURNING id",
+            (nama, nip_input or None, divisi, foto_json)
         )
         karyawan_id = cur.fetchone()[0]
     conn.commit()
@@ -647,7 +651,7 @@ class FaceEngine:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         return out
 
-    def register(self, nip: str, nama: str, divisi: str, images: list) -> dict:
+    def register(self, nip: str, nama: str, divisi: str, images: list, base_url: str = "") -> dict:
         if self.app is None:
             return {"success": False, "msg": "Model belum dimuat"}
         vecs = []
@@ -660,25 +664,38 @@ class FaceEngine:
             return {"success": False, "msg": "Tidak ada wajah terdeteksi"}
 
         try:
-            karyawan_id = register_karyawan_db(nip, nama, divisi)
+            # Daftar dulu untuk dapat karyawan_id, foto_urls diupdate setelah simpan file
+            karyawan_id = register_karyawan_db(nip, nama, divisi, [])
             nip_key = str(karyawan_id)
         except Exception as e:
             return {"success": False, "msg": f"Gagal daftar ke database: {e}"}
 
-        self.embeddings[nip_key] = {"nama": nama, "vecs": vecs}
-        self._save_embeddings()
-
+        # Simpan file foto
         face_dir = FACES_DIR / nip_key
         face_dir.mkdir(parents=True, exist_ok=True)
+        foto_urls = []
         for i, img in enumerate(images[:5]):
-            cv2.imwrite(str(face_dir / f"ref_{i}.jpg"), self._to_bgr(img))
+            filename = f"ref_{i}.jpg"
+            cv2.imwrite(str(face_dir / filename), self._to_bgr(img))
+            foto_urls.append(f"{base_url}/registered_faces/{karyawan_id}/{filename}")
+
+        # Update foto_urls di DB
+        register_karyawan_db(nip, nama, divisi, foto_urls)
+
+        self.embeddings[nip_key] = {"nama": nama, "vecs": vecs}
+        self._save_embeddings()
 
         return {"success": True, "msg": f"Berhasil mendaftarkan {nama} ({len(vecs)} foto)"}
 
     def delete_karyawan(self, nip: str) -> bool:
+        import shutil
         if nip in self.embeddings:
             del self.embeddings[nip]
             self._save_embeddings()
+        # Hapus folder foto
+        face_dir = FACES_DIR / nip
+        if face_dir.exists():
+            shutil.rmtree(face_dir)
         try:
             return delete_karyawan_db(int(nip))
         except Exception:

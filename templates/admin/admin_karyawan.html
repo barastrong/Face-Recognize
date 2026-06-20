@@ -39,7 +39,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">
+          <td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">
             Belum ada karyawan.
             <a href="{{ url_for('admin_daftar_karyawan') }}" style="color:var(--accent);">Daftarkan sekarang</a>
           </td>
@@ -49,4 +49,19 @@
     </table>
   </div>
 </div>
+
+{% block scripts %}
+<!-- <script>
+  function showFotoModal(nama, urls) {
+    document.getElementById('foto-modal-nama').textContent = nama + ' — Foto Referensi';
+    document.getElementById('foto-modal-grid').innerHTML = urls.map(function(u) {
+      return '<img src="' + u + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border);">';
+    }).join('');
+    document.getElementById('foto-modal').style.display = 'flex';
+  }
+  function closeFotoModal() {
+    document.getElementById('foto-modal').style.display = 'none';
+  }
+</script> -->
+{% endblock %}
 {% endblock %}
