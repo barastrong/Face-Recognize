@@ -37,9 +37,7 @@ DB_USER     = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 #  POSTGRESQL HELPERS
-# ═════════════════════════════════════════════════════════════════════════════
 
 def get_db_connection():
     return psycopg2.connect(
@@ -158,11 +156,6 @@ def seed_admin():
     except Exception as e:
         print(f"[ERROR] Gagal seed admin: {e}")
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  USER (tabel "user" — login Flask)
-# ═════════════════════════════════════════════════════════════════════════════
-
 def get_users():
     """List semua user dari tabel 'user' PostgreSQL."""
     try:
@@ -244,11 +237,6 @@ def hapus_user(user_id: int) -> bool:
         print(f"[ERROR] hapus_user: {e}")
         return False
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  KARYAWAN (tabel "karyawan")
-# ═════════════════════════════════════════════════════════════════════════════
-
 def get_karyawan_list():
     try:
         conn = get_db_connection()
@@ -268,7 +256,6 @@ def get_karyawan_list():
     except Exception as e:
         print(f"[ERROR] get_karyawan_list: {e}")
         return []
-
 
 def register_karyawan_db(nip_input: str, nama: str, divisi: str) -> int:
     """
@@ -295,7 +282,6 @@ def register_karyawan_db(nip_input: str, nama: str, divisi: str) -> int:
     cur.close(); conn.close()
     return karyawan_id
 
-
 def delete_karyawan_db(karyawan_id: int) -> bool:
     try:
         conn = get_db_connection()
@@ -308,22 +294,11 @@ def delete_karyawan_db(karyawan_id: int) -> bool:
         print(f"[ERROR] delete_karyawan_db: {e}")
         return False
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  ABSENSI (tabel "absensi")
-# ═════════════════════════════════════════════════════════════════════════════
-
 def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
                   location: str = None) -> dict:
-    """
-    Catat absensi langsung ke tabel 'absensi' PostgreSQL.
-    Satu baris per karyawan per hari, dengan check_in / check_out.
-    Kolom location menyimpan alamat hasil reverse-geocode dari browser.
-    """
     try:
-        karyawan_id = int(nip)   # nip kita simpan sebagai id karyawan
+        karyawan_id = int(nip)   # Penyimpanan NIP
     except (ValueError, TypeError):
-        # Cari karyawan by nama
         conn = get_db_connection()
         cur  = conn.cursor()
         cur.execute("SELECT id FROM karyawan WHERE nama = %s", (nama,))
@@ -337,14 +312,12 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
     tanggal   = now.date()
     waktu_str = now.strftime("%H:%M:%S")
 
-    # Potong location agar tidak melebihi VARCHAR(255)
     if location and len(location) > 255:
         location = location[:252] + "..."
 
     conn = get_db_connection()
     cur  = conn.cursor()
     try:
-        # Ambil nip dari tabel karyawan
         cur.execute("SELECT nip, nama FROM karyawan WHERE id = %s", (karyawan_id,))
         k_row = cur.fetchone()
         if not k_row or not k_row[0]:
@@ -399,46 +372,132 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
         cur.close()
         conn.close()
 
-
 def get_absensi_hari_ini():
     tanggal = date.today()
+
     try:
         conn = get_db_connection()
-        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute('''
-            SELECT a.karyawan_id, a.nip, k.nama, a.check_in, a.check_out,
-                   a.confidence_in, a.confidence_out, a.location
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute("""
+            SELECT
+                a.karyawan_id,
+                a.nip,
+                k.nama,
+                a.check_in,
+                a.check_out,
+                a.confidence_in,
+                a.confidence_out,
+                a.location,
+
+                sm.nama_shift,
+                sm.jam_masuk,
+                sm.jam_pulang
+
             FROM absensi a
-            JOIN karyawan k ON k.id = a.karyawan_id
+            JOIN karyawan k
+                ON k.id = a.karyawan_id
+
+            LEFT JOIN shift_karyawan sk
+                ON sk.karyawan_id = a.karyawan_id
+                AND sk.berlaku_dari <= a.tanggal
+                AND (
+                    sk.berlaku_sampai IS NULL
+                    OR sk.berlaku_sampai >= a.tanggal
+                )
+
+            LEFT JOIN shift_master sm
+                ON sm.id = sk.shift_id
+
             WHERE a.tanggal = %s
             ORDER BY a.check_in
-        ''', (tanggal,))
+        """, (tanggal,))
+
         rows = cur.fetchall()
-        cur.close(); conn.close()
+
+        cur.close()
+        conn.close()
 
         result = []
+
         for r in rows:
             nip_val = r["nip"] or str(r["karyawan_id"])
+
+            nama_shift = r["nama_shift"] or "-"
+            jam_masuk  = str(r["jam_masuk"])[:5] if r["jam_masuk"] else "-"
+            jam_pulang = str(r["jam_pulang"])[:5] if r["jam_pulang"] else "-"
+
             result.append({
-                "nama":       r["nama"], "nip": nip_val,
-                "tipe":       "masuk",
-                "waktu":      r["check_in"].strftime("%Y-%m-%d %H:%M:%S"),
+                "nama": r["nama"],
+                "nip": nip_val,
+                "tipe": "masuk",
+                "waktu": r["check_in"].strftime("%Y-%m-%d %H:%M:%S"),
                 "confidence": round(r["confidence_in"] or 0, 4),
-                "location":   r["location"] or "",
+                "location": r["location"] or "",
+
+                "nama_shift": nama_shift,
+                "jam_shift_masuk": jam_masuk,
+                "jam_shift_pulang": jam_pulang,
             })
+
             if r["check_out"]:
                 result.append({
-                    "nama":       r["nama"], "nip": nip_val,
-                    "tipe":       "pulang",
-                    "waktu":      r["check_out"].strftime("%Y-%m-%d %H:%M:%S"),
+                    "nama": r["nama"],
+                    "nip": nip_val,
+                    "tipe": "pulang",
+                    "waktu": r["check_out"].strftime("%Y-%m-%d %H:%M:%S"),
                     "confidence": round(r["confidence_out"] or 0, 4),
-                    "location":   r["location"] or "",
+                    "location": r["location"] or "",
+
+                    "nama_shift": nama_shift,
+                    "jam_shift_masuk": jam_masuk,
+                    "jam_shift_pulang": jam_pulang,
                 })
+
         return sorted(result, key=lambda x: x["waktu"])
+
     except Exception as e:
         print(f"[ERROR] get_absensi_hari_ini: {e}")
         return []
 
+# def get_absensi_hari_ini():
+#     tanggal = date.today()
+#     try:
+#         conn = get_db_connection()
+#         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+#         cur.execute('''
+#             SELECT a.karyawan_id, a.nip, k.nama, a.check_in, a.check_out,
+#                    a.confidence_in, a.confidence_out, a.location
+#             FROM absensi a
+#             JOIN karyawan k ON k.id = a.karyawan_id
+#             WHERE a.tanggal = %s
+#             ORDER BY a.check_in
+#         ''', (tanggal,))
+#         rows = cur.fetchall()
+#         cur.close(); conn.close()
+
+#         result = []
+#         for r in rows:
+#             nip_val = r["nip"] or str(r["karyawan_id"])
+#             result.append({
+#                 "nama":       r["nama"], "nip": nip_val,
+#                 "tipe":       "masuk",
+#                 "waktu":      r["check_in"].strftime("%Y-%m-%d %H:%M:%S"),
+#                 "confidence": round(r["confidence_in"] or 0, 4),
+#                 "location":   r["location"] or "",
+#             })
+#             if r["check_out"]:
+#                 result.append({
+#                     "nama":       r["nama"], "nip": nip_val,
+#                     "tipe":       "pulang",
+#                     "waktu":      r["check_out"].strftime("%Y-%m-%d %H:%M:%S"),
+#                     "confidence": round(r["confidence_out"] or 0, 4),
+#                     "location":   r["location"] or "",
+#                 })
+#         return sorted(result, key=lambda x: x["waktu"])
+#     except Exception as e:
+#         print(f"[ERROR] get_absensi_hari_ini: {e}")
+#         return []
 
 def get_absensi_range(tgl_awal: str, tgl_akhir: str):
     try:
@@ -494,7 +553,6 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
             else:
                 durasi_detik = None
 
-            # Format durasi final untuk export (jika sudah checkout)
             def _fmt_durasi(detik):
                 if detik is None:
                     return '-'
@@ -525,11 +583,6 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
     except Exception as e:
         print(f'[ERROR] get_absensi_range: {e}')
         return []
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  FACE ENGINE
-# ═════════════════════════════════════════════════════════════════════════════
 
 class FaceEngine:
     def __init__(self):
@@ -654,9 +707,7 @@ def _unknown(msg=""):
             "confidence": 0.0, "bbox": None, "det_score": 0.0, "msg": msg}
 
 
-# ═════════════════════════════════════════════════════════════════════════════
 #  SHIFT MASTER
-# ═════════════════════════════════════════════════════════════════════════════
 
 def get_shift_list():
     try:
@@ -719,11 +770,7 @@ def edit_shift(shift_id: int, nama_shift, jam_masuk, jam_pulang,
     except Exception as e:
         return {'success': False, 'msg': str(e)}
 
-
-# ── Assign shift ke karyawan ──────────────────────────────────────────────────
-
 def get_shift_karyawan():
-    """Return list karyawan beserta shift aktifnya."""
     try:
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -756,7 +803,6 @@ def assign_shift(karyawan_id: int, shift_id: int, berlaku_dari: str,
     try:
         conn = get_db_connection()
         cur  = conn.cursor()
-        # Upsert: kalau sudah ada di tanggal yang sama, update
         cur.execute('''
             INSERT INTO shift_karyawan (karyawan_id, shift_id, berlaku_dari, berlaku_sampai)
             VALUES (%s, %s, %s, %s)
@@ -780,9 +826,7 @@ def hapus_shift_karyawan(sk_id: int) -> dict:
     except Exception as e:
         return {'success': False, 'msg': str(e)}
 
-
 def get_shift_aktif_karyawan(karyawan_id: int) -> dict:
-    """Ambil shift yang sedang aktif untuk karyawan tertentu hari ini."""
     try:
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

@@ -1,9 +1,3 @@
-"""
-app.py  –  Flask Absensi Face Recognition
-Database: PostgreSQL langsung (user, karyawan, absensi)
-Jalankan: python app.py
-"""
-
 import os, base64, io
 from datetime import date, timedelta, datetime
 from functools import wraps
@@ -32,11 +26,6 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-ganti-ini")
 
 engine = FaceEngine()
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  AUTH HELPERS
-# ═════════════════════════════════════════════════════════════════════════════
 
 def login_required(f):
     @wraps(f)
@@ -71,11 +60,6 @@ def bgr_to_b64(img_bgr: np.ndarray) -> str:
     _, buf = cv2.imencode(".jpg", img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 85])
     return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  HEALTH CHECK
-# ═════════════════════════════════════════════════════════════════════════════
-
 @app.route("/health")
 def health():
     result      = test_connection()
@@ -88,17 +72,11 @@ def health():
         "checks":    result,
     }), status_code
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  AUTH ROUTES
-# ═════════════════════════════════════════════════════════════════════════════
-
 @app.route("/")
 def index():
     if "user_id" in session:
         return redirect(url_for("admin_dashboard") if session.get("role") == "admin" else url_for("absensi"))
     return redirect(url_for("login"))
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -121,22 +99,15 @@ def login():
         flash("Email atau password salah.", "danger")
     return render_template("login.html")
 
-
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  ABSENSI
-# ═════════════════════════════════════════════════════════════════════════════
-
 @app.route("/absensi")
 @login_required
 def absensi():
     return render_template("absensi.html", absensi=get_absensi_hari_ini())
-
 
 @app.route("/api/absen", methods=["POST"])
 @login_required
@@ -149,7 +120,6 @@ def api_absen():
     if tipe not in ("masuk", "pulang"):
         return jsonify({"error": "Tipe harus masuk atau pulang"}), 400
 
-    # Ambil lokasi dari request (hasil reverse-geocode di browser)
     location = data.get("location") or None
 
     try:
@@ -178,16 +148,10 @@ def api_absen():
         "location":     location,
     })
 
-
 @app.route("/api/absensi-hari-ini")
 @login_required
 def api_absensi_hari_ini():
     return jsonify(get_absensi_hari_ini())
-
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  ADMIN
-# ═════════════════════════════════════════════════════════════════════════════
 
 @app.route("/admin")
 @admin_required
@@ -200,12 +164,10 @@ def admin_dashboard():
         absensi=absensi_hari_ini, karyawan=karyawan,
         n_masuk=n_masuk, n_pulang=n_pulang, total_karyawan=len(karyawan))
 
-
 @app.route("/admin/karyawan")
 @admin_required
 def admin_karyawan():
     return render_template("admin/admin_karyawan.html", karyawan=get_karyawan_list())
-
 
 @app.route("/admin/karyawan/daftar", methods=["GET", "POST"])
 @admin_required
@@ -236,7 +198,6 @@ def admin_hapus_karyawan(nip):
     flash("Karyawan berhasil dihapus." if ok else "Gagal menghapus.", "success" if ok else "danger")
     return redirect(url_for("admin_karyawan"))
 
-
 @app.route("/admin/laporan")
 @admin_required
 def admin_laporan():
@@ -245,7 +206,6 @@ def admin_laporan():
     return render_template("admin/admin_laporan.html",
         data=get_absensi_range(tgl_awal, tgl_akhir),
         tgl_awal=tgl_awal, tgl_akhir=tgl_akhir)
-
 
 @app.route("/admin/laporan/export")
 @admin_required
@@ -272,7 +232,6 @@ def admin_export():
             return "-"
     rows = get_absensi_range(tgl_awal, tgl_akhir)
 
-    # ── Sheet 1: Detail absensi ──────────────────────────────────
     df = pd.DataFrame([
         {
             "No":               i + 1,
@@ -292,7 +251,6 @@ def admin_export():
         for i, r in enumerate(rows)
     ])
 
-    # ── Sheet 2: Rekap per karyawan ──────────────────────────────
     rekap = {}
     for r in rows:
         key = (r["nip"], r["nama"], r["divisi"])
@@ -355,12 +313,10 @@ def admin_export():
                      download_name=f"absensi_{tgl_awal}_{tgl_akhir}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-
 @app.route("/admin/users")
 @admin_required
 def admin_users():
     return render_template("admin/admin_users.html", users=get_users())
-
 
 @app.route("/admin/users/tambah", methods=["POST"])
 @admin_required
@@ -377,7 +333,6 @@ def admin_tambah_user():
     flash(result["msg"], "success" if result["success"] else "danger")
     return redirect(url_for("admin_users"))
 
-
 @app.route("/admin/users/hapus/<int:user_id>", methods=["POST"])
 @admin_required
 def admin_hapus_user(user_id):
@@ -388,11 +343,6 @@ def admin_hapus_user(user_id):
     flash("User berhasil dihapus.", "success")
     return redirect(url_for("admin_users"))
 
-
-# ═════════════════════════════════════════════════════════════════════════════
-#  SHIFT
-# ═════════════════════════════════════════════════════════════════════════════
-
 @app.route("/admin/shift")
 @admin_required
 def admin_shift():
@@ -401,7 +351,6 @@ def admin_shift():
         shift_karyawan=get_shift_karyawan(),
         karyawan=get_karyawan_list(),
         today=date.today().isoformat())
-
 
 @app.route("/admin/shift/tambah", methods=["POST"])
 @admin_required
@@ -416,7 +365,6 @@ def admin_tambah_shift():
     )
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
-
 
 @app.route("/admin/shift/edit/<int:shift_id>", methods=["POST"])
 @admin_required
@@ -433,14 +381,12 @@ def admin_edit_shift(shift_id):
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
 
-
 @app.route("/admin/shift/hapus/<int:shift_id>", methods=["POST"])
 @admin_required
 def admin_hapus_shift(shift_id):
     r = hapus_shift(shift_id)
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
-
 
 @app.route("/admin/shift/assign", methods=["POST"])
 @admin_required
@@ -454,16 +400,12 @@ def admin_assign_shift():
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
 
-
 @app.route("/admin/shift/assign/hapus/<int:sk_id>", methods=["POST"])
 @admin_required
 def admin_hapus_assign_shift(sk_id):
     r = hapus_shift_karyawan(sk_id)
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     init_db()

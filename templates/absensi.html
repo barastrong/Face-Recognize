@@ -355,14 +355,9 @@
       const a = data.address || {};
 
       // ── Bagian 1: Nama jalan ───────────────────────────────────
-      // road / pedestrian / footway untuk jalan terdeteksi GPS
-      // Jika kosong, gunakan municipality (nama kecamatan) sebagai nama jalan
       const roadRaw = a.road || a.pedestrian || a.footway ||
                       a.path || a.cycleway   || a.street  || "";
       const nomorRumah = a.house_number || "";
-
-      // Nominatim biasanya mengembalikan nama jalan TANPA prefix "Jl.",
-      // jadi tambahkan sendiri kecuali sudah berawalan Jl./Jalan/Gg./Gang.
       let bagianJalan = roadRaw;
       if (bagianJalan && !/^(jl\.?|jalan|gg\.?|gang)\s/i.test(bagianJalan)) {
         bagianJalan = "Jl. " + bagianJalan;
@@ -381,7 +376,6 @@
         a.village     || a.hamlet        || a.locality      || "";
 
       // ── Bagian 3: Kecamatan ────────────────────────────────────
-      // municipality sudah dipakai di jalan, jadi kecamatan dari
       // city_district, district, subdistrict, atau fallback municipality
       const rawKec =
         a.city_district || a.district || a.subdistrict || a.municipality || "";

@@ -7,13 +7,24 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     :root {
-      --bg: #0b0d14; --surface: #13151f; --surface2: #1a1d2e;
-      --border: #252840; --text: #e2e8f0; --muted: #6b7280;
-      --accent: #6366f1; --accent-dim: rgba(99,102,241,.12);
-      --green: #22c55e; --amber: #f59e0b; --red: #ef4444;
+      --bg: #0b0d14; 
+      --surface: #13151f; 
+      --surface2: #1a1d2e;
+      --border: #252840; 
+      --text: #e2e8f0; 
+      --muted: #6b7280;
+      --accent: #6366f1; 
+      --accent-dim: rgba(99,102,241,.12);
+      --green: #22c55e; 
+      --amber: #f59e0b; 
+      --red: #ef4444;
       --sidebar-w: 230px;
     }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
     body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 14px; }
 
     /* ── Sidebar ── */
@@ -127,10 +138,6 @@
     /* ── Divider ── */
     .divider { height: 1px; background: var(--border); margin: 18px 0; }
 
-    /* ══════════════════════════════════════════
-       RESPONSIVE
-    ══════════════════════════════════════════ */
-
     /* Tablet (≤ 1024px): grid-4 → 2 kolom */
     @media (max-width: 1024px) {
       .grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -178,7 +185,6 @@
 </head>
 <body>
 
-<!-- Overlay sidebar (mobile) -->
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <aside class="sidebar" id="sidebar">
