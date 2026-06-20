@@ -128,6 +128,7 @@ def init_db():
         cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS confidence_out REAL')
         # ── Kolom location (baru) ────────────────────────────────────────────
         cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS location VARCHAR(255)')
+        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shift_master(id) ON DELETE SET NULL')
         conn.commit()
         cur.close()
         conn.close()
@@ -295,7 +296,7 @@ def delete_karyawan_db(karyawan_id: int) -> bool:
         return False
 
 def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
-                  location: str = None) -> dict:
+                  location: str = None, shift_id: int = None) -> dict:
     try:
         karyawan_id = int(nip)   # Penyimpanan NIP
     except (ValueError, TypeError):
@@ -337,10 +338,10 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
             cur.execute(
                 "INSERT INTO absensi "
                 "(nip, nama, tipe, waktu, confidence, karyawan_id, tanggal, "
-                " check_in, confidence_in, location) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                " check_in, confidence_in, location, shift_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (nip_val, nama_val, "masuk", now, confidence,
-                 karyawan_id, tanggal, now, confidence, location)
+                 karyawan_id, tanggal, now, confidence, location, shift_id or None)
             )
             conn.commit()
             return {"success": True, "msg": f"Absen masuk berhasil: {nama} pukul {waktu_str}"}
@@ -389,26 +390,12 @@ def get_absensi_hari_ini():
                 a.confidence_in,
                 a.confidence_out,
                 a.location,
-
                 sm.nama_shift,
                 sm.jam_masuk,
                 sm.jam_pulang
-
             FROM absensi a
-            JOIN karyawan k
-                ON k.id = a.karyawan_id
-
-            LEFT JOIN shift_karyawan sk
-                ON sk.karyawan_id = a.karyawan_id
-                AND sk.berlaku_dari <= a.tanggal
-                AND (
-                    sk.berlaku_sampai IS NULL
-                    OR sk.berlaku_sampai >= a.tanggal
-                )
-
-            LEFT JOIN shift_master sm
-                ON sm.id = sk.shift_id
-
+            JOIN karyawan k ON k.id = a.karyawan_id
+            LEFT JOIN shift_master sm ON sm.id = a.shift_id
             WHERE a.tanggal = %s
             ORDER BY a.check_in
         """, (tanggal,))
@@ -430,11 +417,11 @@ def get_absensi_hari_ini():
             result.append({
                 "nama": r["nama"],
                 "nip": nip_val,
+                "karyawan_id": r["karyawan_id"],
                 "tipe": "masuk",
                 "waktu": r["check_in"].strftime("%Y-%m-%d %H:%M:%S"),
                 "confidence": round(r["confidence_in"] or 0, 4),
                 "location": r["location"] or "",
-
                 "nama_shift": nama_shift,
                 "jam_shift_masuk": jam_masuk,
                 "jam_shift_pulang": jam_pulang,
@@ -444,11 +431,11 @@ def get_absensi_hari_ini():
                 result.append({
                     "nama": r["nama"],
                     "nip": nip_val,
+                    "karyawan_id": r["karyawan_id"],
                     "tipe": "pulang",
                     "waktu": r["check_out"].strftime("%Y-%m-%d %H:%M:%S"),
                     "confidence": round(r["confidence_out"] or 0, 4),
                     "location": r["location"] or "",
-
                     "nama_shift": nama_shift,
                     "jam_shift_masuk": jam_masuk,
                     "jam_shift_pulang": jam_pulang,
@@ -511,11 +498,7 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
                 sm.nama_shift, sm.jam_masuk, sm.jam_pulang, sm.toleransi_menit
             FROM absensi a
             JOIN karyawan k ON k.id = a.karyawan_id
-            LEFT JOIN shift_karyawan sk
-                ON sk.karyawan_id = a.karyawan_id
-                AND sk.berlaku_dari <= a.tanggal
-                AND (sk.berlaku_sampai IS NULL OR sk.berlaku_sampai >= a.tanggal)
-            LEFT JOIN shift_master sm ON sm.id = sk.shift_id
+            LEFT JOIN shift_master sm ON sm.id = a.shift_id
             WHERE a.tanggal BETWEEN %s AND %s
             ORDER BY a.tanggal DESC, a.check_in DESC
         ''', (tgl_awal, tgl_akhir))
@@ -825,6 +808,49 @@ def hapus_shift_karyawan(sk_id: int) -> dict:
         return {'success': True, 'msg': 'Assignment shift dihapus'}
     except Exception as e:
         return {'success': False, 'msg': str(e)}
+
+def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('''
+            SELECT a.tanggal, a.check_in, a.check_out, a.location,
+                   sm.nama_shift, sm.jam_masuk, sm.jam_pulang
+            FROM absensi a
+            LEFT JOIN shift_master sm ON sm.id = a.shift_id
+            WHERE a.karyawan_id = %s
+            ORDER BY a.tanggal DESC, a.check_in DESC
+            LIMIT %s
+        ''', (karyawan_id, limit))
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        result = []
+        for r in rows:
+            ci = r['check_in']
+            co = r['check_out']
+            # hitung durasi
+            if ci and co:
+                diff = int((co - ci).total_seconds())
+                h, rem = divmod(diff, 3600)
+                m, s   = divmod(rem, 60)
+                durasi = f"{h:02d}:{m:02d}:{s:02d}"
+            else:
+                durasi = None
+            result.append({
+                'tanggal':    r['tanggal'].strftime('%Y-%m-%d'),
+                'check_in':   ci.strftime('%H:%M') if ci else '-',
+                'check_in_ts': int(ci.timestamp()) if ci else None,
+                'check_out':  co.strftime('%H:%M') if co else '-',
+                'durasi':     durasi,
+                'nama_shift': r['nama_shift'] or '-',
+                'jam_shift':  (str(r['jam_masuk'])[:5] + '–' + str(r['jam_pulang'])[:5]) if r['jam_masuk'] else '-',
+                'location':   r['location'] or '-',
+            })
+        return result
+    except Exception as e:
+        print(f'[ERROR] get_absensi_karyawan: {e}')
+        return []
+
 
 def get_shift_aktif_karyawan(karyawan_id: int) -> dict:
     try:

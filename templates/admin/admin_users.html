@@ -10,6 +10,16 @@
   </div>
 </div>
 
+<div class="card" style="margin-bottom:18px;background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.25);padding:14px 18px;">
+  <div style="display:flex;align-items:flex-start;gap:10px;">
+    <i data-lucide="info" style="width:16px;height:16px;color:var(--accent);flex-shrink:0;margin-top:2px;"></i>
+    <div style="font-size:.81rem;color:var(--muted);line-height:1.6;">
+      Kolom <strong style="color:var(--text);">NIP</strong> pada akun user harus sama persis dengan NIP karyawan di menu <strong style="color:var(--text);">Karyawan</strong>.
+      Ini yang menghubungkan akun login ke data absensi wajah. User dengan NIP <span style="color:var(--red);">belum diisi</span> tidak bisa melihat riwayat absensinya sendiri.
+    </div>
+  </div>
+</div>
+
 <div class="grid-2" style="align-items:start;">
 
   <!-- Form tambah user -->
@@ -73,7 +83,13 @@
               </div>
             </td>
             <td><span class="badge badge-{{ u.role }}">{{ u.role }}</span></td>
-            <td class="td-muted">{{ u.nip or '-' }}</td>
+            <td>
+              {% if u.nip %}
+                <span style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--green);padding:2px 8px;border-radius:99px;font-size:.72rem;font-weight:600;">{{ u.nip }}</span>
+              {% else %}
+                <span style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:2px 8px;border-radius:99px;font-size:.72rem;">Belum diisi</span>
+              {% endif %}
+            </td>
             <td>
               {% if u.id != session.user_id %}
               <form method="POST" action="{{ url_for('admin_hapus_user', user_id=u.id) }}"

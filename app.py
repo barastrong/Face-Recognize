@@ -17,7 +17,7 @@ from face_engine import (
     get_karyawan_list, get_user_by_email, get_user_by_id,
     tambah_user, hapus_user, get_users,
     get_shift_list, tambah_shift, hapus_shift, edit_shift,
-    get_shift_karyawan, assign_shift, hapus_shift_karyawan,
+    get_absensi_karyawan,
 )
 
 load_dotenv()
@@ -107,7 +107,8 @@ def logout():
 @app.route("/absensi")
 @login_required
 def absensi():
-    return render_template("absensi.html", absensi=get_absensi_hari_ini())
+    return render_template("absensi.html", absensi=get_absensi_hari_ini(),
+                           shifts=get_shift_list())
 
 @app.route("/api/absen", methods=["POST"])
 @login_required
@@ -117,10 +118,14 @@ def api_absen():
         return jsonify({"error": "Field image wajib ada"}), 400
 
     tipe = data.get("tipe", "masuk")
-    if tipe not in ("masuk", "pulang"):
+    if tipe not in ("masuk", "pulang", "__preview__"):
         return jsonify({"error": "Tipe harus masuk atau pulang"}), 400
 
     location = data.get("location") or None
+    shift_id  = data.get("shift_id") or None
+    if shift_id:
+        try: shift_id = int(shift_id)
+        except: shift_id = None
 
     try:
         img_bgr = decode_b64_image(data["image"])
@@ -132,11 +137,13 @@ def api_absen():
     face_b64     = bgr_to_b64(out_bgr)
     absen_result = {"success": False, "msg": "Wajah tidak dikenali"}
 
-    if result["recognized"]:
+    if result["recognized"] and tipe != "__preview__":
         absen_result = catat_absensi(
             result["nip"], result["nama"], tipe,
-            result["confidence"], location
+            result["confidence"], location, shift_id
         )
+    elif result["recognized"]:
+        absen_result = {"success": True, "msg": "Wajah dikenali"}
 
     return jsonify({
         "recognized":   result["recognized"],
@@ -152,6 +159,35 @@ def api_absen():
 @login_required
 def api_absensi_hari_ini():
     return jsonify(get_absensi_hari_ini())
+
+
+@app.route("/riwayat")
+@login_required
+def riwayat_absensi():
+    nip = session.get("nip")
+    karyawan_id = None
+    if nip:
+        # nip di session bisa berupa karyawan_id (integer string) atau NIP string
+        # cari karyawan_id dari DB berdasarkan NIP
+        from face_engine import get_db_connection
+        import psycopg2.extras
+        try:
+            conn = get_db_connection()
+            cur  = conn.cursor()
+            cur.execute("SELECT id FROM karyawan WHERE nip = %s LIMIT 1", (nip,))
+            row = cur.fetchone()
+            if not row:
+                # fallback: nip mungkin langsung karyawan_id integer
+                try: karyawan_id = int(nip)
+                except: pass
+            else:
+                karyawan_id = row[0]
+            cur.close(); conn.close()
+        except Exception:
+            pass
+    riwayat = get_absensi_karyawan(karyawan_id) if karyawan_id else []
+    return render_template("riwayat.html", riwayat=riwayat, karyawan_id=karyawan_id)
+
 
 @app.route("/admin")
 @admin_required
@@ -346,11 +382,7 @@ def admin_hapus_user(user_id):
 @app.route("/admin/shift")
 @admin_required
 def admin_shift():
-    return render_template("admin/admin_shift.html",
-        shifts=get_shift_list(),
-        shift_karyawan=get_shift_karyawan(),
-        karyawan=get_karyawan_list(),
-        today=date.today().isoformat())
+    return render_template("admin/admin_shift.html", shifts=get_shift_list())
 
 @app.route("/admin/shift/tambah", methods=["POST"])
 @admin_required
@@ -385,25 +417,6 @@ def admin_edit_shift(shift_id):
 @admin_required
 def admin_hapus_shift(shift_id):
     r = hapus_shift(shift_id)
-    flash(r["msg"], "success" if r["success"] else "danger")
-    return redirect(url_for("admin_shift"))
-
-@app.route("/admin/shift/assign", methods=["POST"])
-@admin_required
-def admin_assign_shift():
-    r = assign_shift(
-        karyawan_id    = int(request.form.get("karyawan_id")),
-        shift_id       = int(request.form.get("shift_id")),
-        berlaku_dari   = request.form.get("berlaku_dari"),
-        berlaku_sampai = request.form.get("berlaku_sampai") or None,
-    )
-    flash(r["msg"], "success" if r["success"] else "danger")
-    return redirect(url_for("admin_shift"))
-
-@app.route("/admin/shift/assign/hapus/<int:sk_id>", methods=["POST"])
-@admin_required
-def admin_hapus_assign_shift(sk_id):
-    r = hapus_shift_karyawan(sk_id)
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
 

@@ -55,7 +55,7 @@
 <div class="page-header">
   <div class="page-header-left">
     <h1><i data-lucide="clock-4" style="width:20px;height:20px;"></i> Shift Master</h1>
-    <div class="page-sub">Kelola shift kerja dan penugasan karyawan</div>
+    <div class="page-sub">Kelola shift kerja — karyawan memilih shiftnya saat absensi</div>
   </div>
   <button class="btn btn-primary" onclick="openModal('modal-tambah')">
     <i data-lucide="plus" style="width:15px;height:15px;"></i> Tambah Shift
@@ -92,7 +92,14 @@
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="btn btn-outline btn-sm"
-                onclick="openEdit({{ s.id }},'{{ s.nama_shift }}','{{ s.jam_masuk }}','{{ s.jam_pulang }}',{{ s.toleransi_menit }},{{ 'true' if s.melewati_tengah_malam else 'false' }},'{{ s.keterangan or '' }}')">
+                data-id="{{ s.id }}"
+                data-nama="{{ s.nama_shift }}"
+                data-masuk="{{ s.jam_masuk }}"
+                data-pulang="{{ s.jam_pulang }}"
+                data-toleransi="{{ s.toleransi_menit }}"
+                data-malam="{{ '1' if s.melewati_tengah_malam else '0' }}"
+                data-ket="{{ s.keterangan or '' }}"
+                onclick="openEditBtn(this)">
                 <i data-lucide="pencil" style="width:12px;height:12px;"></i> Edit
               </button>
               <form method="POST" action="{{ url_for('admin_hapus_shift', shift_id=s.id) }}"
@@ -117,83 +124,17 @@
   </div>
 </div>
 
-<!-- ── Assign + List ── -->
-<div class="grid-2" style="align-items:start;">
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><i data-lucide="user-check" style="width:16px;height:16px;"></i> Assign Shift ke Karyawan</div>
-    </div>
-    <form method="POST" action="{{ url_for('admin_assign_shift') }}">
-      <div class="form-group">
-        <label class="form-label">Karyawan *</label>
-        <select class="form-control" name="karyawan_id" required>
-          <option value="">-- Pilih Karyawan --</option>
-          {% for k in karyawan %}
-          <option value="{{ k.id }}">{{ k.nama }} ({{ k.nip }})</option>
-          {% endfor %}
-        </select>
+<!-- ── Info: karyawan pilih sendiri ── -->
+<div class="card" style="margin-bottom:20px;background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.25);">
+  <div style="display:flex;align-items:flex-start;gap:12px;">
+    <i data-lucide="info" style="width:18px;height:18px;color:var(--accent);flex-shrink:0;margin-top:2px;"></i>
+    <div>
+      <div style="font-weight:600;font-size:.9rem;margin-bottom:4px;">Cara Kerja Shift</div>
+      <div style="font-size:.82rem;color:var(--muted);line-height:1.6;">
+        Karyawan <strong style="color:var(--text);">memilih shift sendiri</strong> saat melakukan absensi masuk.
+        Setelah wajah terdeteksi, muncul daftar shift di bawah ini dan karyawan memilih sesuai jadwal hari itu.
+        Admin hanya perlu mendefinisikan shift-shift yang tersedia di sini.
       </div>
-      <div class="form-group">
-        <label class="form-label">Shift *</label>
-        <select class="form-control" name="shift_id" required>
-          <option value="">-- Pilih Shift --</option>
-          {% for s in shifts %}
-          <option value="{{ s.id }}">{{ s.nama_shift }} ({{ s.jam_masuk }}–{{ s.jam_pulang }})</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="row-2">
-        <div class="form-group">
-          <label class="form-label">Berlaku Dari *</label>
-          <input class="form-control" type="date" name="berlaku_dari" value="{{ today }}" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Berlaku Sampai <span style="color:var(--muted);font-weight:400;">(opsional)</span></label>
-          <input class="form-control" type="date" name="berlaku_sampai">
-        </div>
-      </div>
-      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center;">
-        <i data-lucide="check" style="width:15px;height:15px;"></i> Assign Shift
-      </button>
-    </form>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><i data-lucide="users" style="width:16px;height:16px;"></i> Shift Aktif Karyawan</div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Karyawan</th><th>Shift Aktif</th><th>Berlaku</th></tr>
-        </thead>
-        <tbody>
-          {% for sk in shift_karyawan %}
-          <tr>
-            <td>
-              <div style="font-weight:600;font-size:.86rem;">{{ sk.nama }}</div>
-              <div style="font-size:.75rem;color:var(--muted);">{{ sk.nip or '–' }}</div>
-            </td>
-            <td>
-              {% if sk.nama_shift %}
-                <div><span class="shift-badge">{{ sk.nama_shift }}</span></div>
-                <div style="font-size:.74rem;color:var(--muted);margin-top:3px;">{{ sk.jam_masuk }}–{{ sk.jam_pulang }}</div>
-              {% else %}<span class="no-shift">Belum ada shift</span>{% endif %}
-            </td>
-            <td class="td-muted" style="font-size:.78rem;">
-              {% if sk.berlaku_dari %}
-                {{ sk.berlaku_dari }}<br>
-                {% if sk.berlaku_sampai %}s/d {{ sk.berlaku_sampai }}
-                {% else %}<span style="color:var(--green);">aktif terus</span>{% endif %}
-              {% else %}–{% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px;">Belum ada karyawan terdaftar</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
     </div>
   </div>
 </div>
@@ -358,6 +299,17 @@
   }
 
   // ── Buka modal edit dengan data shift ──────────────────────────
+  function openEditBtn(btn) {
+    var id       = btn.dataset.id;
+    var nama     = btn.dataset.nama;
+    var masuk    = btn.dataset.masuk;
+    var pulang   = btn.dataset.pulang;
+    var toleransi= btn.dataset.toleransi;
+    var malam    = btn.dataset.malam === '1';
+    var ket      = btn.dataset.ket;
+    openEdit(id, nama, masuk, pulang, toleransi, malam, ket);
+  }
+
   function openEdit(id, nama, masuk, pulang, toleransi, tengahMalam, ket) {
     document.getElementById('form-edit').action = `/admin/shift/edit/${id}`;
     document.getElementById('edit-nama').value = nama;

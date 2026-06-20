@@ -90,6 +90,32 @@
   #btn-reset { width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px; margin-top: 8px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: .84rem; cursor: pointer; transition: background .15s; }
   #btn-reset:hover { background: rgba(255,255,255,.04); }
 
+  /* shift modal */
+  .shift-modal-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.65); z-index: 400;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .shift-modal-backdrop.show { display: flex; }
+  .shift-modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; width: 100%; max-width: 400px;
+  }
+  .shift-modal-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .shift-modal-sub   { font-size: .8rem; color: var(--muted); margin-bottom: 18px; }
+  .shift-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+  .shift-opt {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 10px;
+    border: 1.5px solid var(--border); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .shift-opt:hover  { border-color: var(--accent); background: var(--accent-dim); }
+  .shift-opt.active { border-color: var(--accent); background: var(--accent-dim); }
+  .shift-opt-name  { font-weight: 600; font-size: .9rem; }
+  .shift-opt-time  { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+  .shift-modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+
   #status-box { margin-top: 16px; padding: 14px 16px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface2); display: flex; align-items: flex-start; gap: 12px; min-height: 72px; transition: border-color .3s; }
   #status-box.success { border-color: var(--green); }
   #status-box.error   { border-color: var(--red); }
@@ -270,6 +296,34 @@
     <canvas id="canvas" style="display:none"></canvas>
   </div>
 
+  <!-- Modal Pilih Shift -->
+  <div class="shift-modal-backdrop" id="shift-modal">
+    <div class="shift-modal">
+      <div class="shift-modal-title"><i data-lucide="clock-4" style="width:18px;height:18px;color:var(--accent);"></i> Pilih Shift</div>
+      <div class="shift-modal-sub" id="shift-modal-sub">Pilih shift untuk absensi hari ini</div>
+      <div class="shift-list" id="shift-list">
+        {% for s in shifts %}
+        <div class="shift-opt" data-id="{{ s.id }}" onclick="selectShift(this)">
+          <div>
+            <div class="shift-opt-name">{{ s.nama_shift }}</div>
+            <div class="shift-opt-time">{{ s.jam_masuk }} &ndash; {{ s.jam_pulang }}
+              {% if s.keterangan %} &middot; {{ s.keterangan }}{% endif %}
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div style="color:var(--muted);font-size:.85rem;text-align:center;padding:16px;">Belum ada shift tersedia</div>
+        {% endfor %}
+      </div>
+      <div class="shift-modal-footer">
+        <button class="btn btn-outline" onclick="cancelShift()">Batal</button>
+        <button class="btn btn-primary" id="btn-confirm-shift" disabled onclick="confirmShift()">
+          <i data-lucide="check" style="width:14px;height:14px;"></i> Konfirmasi
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Kanan: list absensi -->
   <div class="card">
     <div class="card-header">
@@ -306,6 +360,9 @@
 <script>
   // ── Clock ──────────────────────────────────────────────────────
   let tipe = "masuk";
+  let _pendingImage = null;
+  let _pendingLoc   = null;
+  let _selectedShiftId = null;
   const HARI  = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
   const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
@@ -555,30 +612,91 @@
 
     const b64 = captureFrame();
 
-    // Pakai lokasi yang sudah ada; jika masih null (sedang loading) tunggu sebentar
     let loc = currentLocation;
     if (loc === null) {
-      // Beri waktu max 3 detik untuk geolocation selesai
       await new Promise(resolve => {
         let waited = 0;
         const iv = setInterval(() => {
           waited += 200;
-          if (currentLocation !== null || waited >= 3000) {
-            clearInterval(iv);
-            resolve();
-          }
+          if (currentLocation !== null || waited >= 3000) { clearInterval(iv); resolve(); }
         }, 200);
       });
       loc = currentLocation;
     }
-    // Jika false (ditolak/gagal), kirim null agar kolom DB tetap kosong
     const locationPayload = loc || null;
 
+    // Untuk tipe masuk: deteksi dulu, jika dikenali → tampilkan modal shift
+    // Untuk tipe pulang: langsung submit
+    if (tipe === "masuk") {
+      // Simpan sementara
+      _pendingImage = b64;
+      _pendingLoc   = locationPayload;
+
+      // Validasi wajah dulu (preview only, belum catat)
+      try {
+        const resp = await fetch("/api/absen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: b64, tipe: "__preview__", location: locationPayload })
+        });
+        const data = await resp.json();
+        if (data.face_image) {
+          document.getElementById("result-img").src = data.face_image;
+          document.getElementById("result-img").style.display = "block";
+          document.getElementById("video").style.display = "none";
+        }
+        if (data.recognized) {
+          // Tampilkan modal pilih shift
+          document.getElementById("shift-modal-sub").textContent =
+            "Halo " + data.nama + "! Pilih shift untuk absensi masuk hari ini.";
+          _selectedShiftId = null;
+          document.querySelectorAll(".shift-opt").forEach(el => el.classList.remove("active"));
+          document.getElementById("btn-confirm-shift").disabled = true;
+          document.getElementById("shift-modal").classList.add("show");
+          lucide.createIcons();
+          // Simpan data wajah untuk dipakai saat konfirmasi
+          _pendingFaceData = data;
+        } else {
+          setStatus("error", "x-circle", "Wajah tidak dikenali", data.absen_result?.msg || "Coba lagi");
+          document.getElementById("btn-reset").style.display = "flex";
+          document.getElementById("btn-scan").disabled = false;
+        }
+      } catch(e) {
+        setStatus("error", "wifi-off", "Gagal terhubung", "Server tidak merespons");
+        document.getElementById("btn-scan").disabled = false;
+      }
+    } else {
+      // Pulang: langsung submit
+      await submitAbsen(b64, locationPayload, null);
+    }
+  }
+
+  let _pendingFaceData = null;
+
+  function selectShift(el) {
+    document.querySelectorAll(".shift-opt").forEach(e => e.classList.remove("active"));
+    el.classList.add("active");
+    _selectedShiftId = el.dataset.id;
+    document.getElementById("btn-confirm-shift").disabled = false;
+  }
+
+  function cancelShift() {
+    document.getElementById("shift-modal").classList.remove("show");
+    document.getElementById("btn-scan").disabled = false;
+    resetScan();
+  }
+
+  async function confirmShift() {
+    document.getElementById("shift-modal").classList.remove("show");
+    await submitAbsen(_pendingImage, _pendingLoc, _selectedShiftId);
+  }
+
+  async function submitAbsen(b64, locationPayload, shiftId) {
     try {
       const resp = await fetch("/api/absen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: b64, tipe, location: locationPayload })
+        body: JSON.stringify({ image: b64, tipe, location: locationPayload, shift_id: shiftId })
       });
       const data = await resp.json();
 
@@ -593,8 +711,7 @@
         setStatus(
           ar.success ? "success" : "warning",
           ar.success ? "check-circle" : "alert-triangle",
-          data.nama,
-          ar.msg,
+          data.nama, ar.msg,
           "Confidence: " + (data.confidence * 100).toFixed(1) + "%",
           locationPayload
         );
@@ -603,7 +720,7 @@
         setStatus("error", "x-circle", "Wajah tidak dikenali", data.absen_result?.msg || "Coba lagi");
       }
       document.getElementById("btn-reset").style.display = "flex";
-    } catch (e) {
+    } catch(e) {
       setStatus("error", "wifi-off", "Gagal terhubung", "Server tidak merespons");
       document.getElementById("btn-scan").disabled = false;
     }

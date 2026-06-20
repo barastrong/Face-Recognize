@@ -203,6 +203,12 @@
       <span class="nav-icon"><i data-lucide="clock" style="width:16px;height:16px;"></i></span>
       Absensi
     </a>
+    <a href="{{ url_for('riwayat_absensi') }}"
+       class="nav-item {% if request.endpoint == 'riwayat_absensi' %}active{% endif %}"
+       onclick="closeSidebar()">
+      <span class="nav-icon"><i data-lucide="history" style="width:16px;height:16px;"></i></span>
+      Riwayat Saya
+    </a>
     {% if session.get('role') == 'admin' %}
     <div class="nav-label">Admin</div>
     <a href="{{ url_for('admin_dashboard') }}"
@@ -237,6 +243,64 @@
     </a>
     {% endif %}
   </nav>
+
+  {% if session.get('role') != 'admin' %}
+  <div style="padding:10px;border-top:1px solid var(--border);overflow-y:auto;max-height:240px;">
+    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding:6px 6px 4px;">Absensi Saya Hari Ini</div>
+    {% if session.get('nip') %}
+    <div style="font-size:.71rem;color:var(--muted);padding:0 6px 5px;display:flex;align-items:center;gap:5px;">
+      <span style="color:var(--accent);font-weight:600;">{{ session.get('username') or session.get('email') }}</span>
+      <span style="background:var(--accent-dim);color:var(--accent);padding:1px 6px;border-radius:99px;font-size:.65rem;font-weight:600;">NIP: {{ session.get('nip') }}</span>
+    </div>
+    {% endif %}
+    <div id="sidebar-absensi">
+      <div style="color:var(--muted);padding:6px;font-size:.75rem;">Memuat…</div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var userNip = '{{ session.get("nip") or "" }}';
+    function loadSidebarAbsensi() {
+      fetch('/api/absensi-hari-ini')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+          var el = document.getElementById('sidebar-absensi');
+          if (!userNip) {
+            el.innerHTML = '<div style="color:var(--amber);padding:6px;font-size:.73rem;">⚠ NIP belum diisi di akun. Hubungi admin.</div>';
+            return;
+          }
+          var mine = data.filter(function(d){ return String(d.nip) === String(userNip); });
+          if (!mine.length) {
+            el.innerHTML = '<div style="color:var(--muted);padding:6px;font-size:.75rem;">Belum ada absensi hari ini</div>';
+            return;
+          }
+          var rows = mine.map(function(d){
+            var color = d.tipe === 'masuk' ? 'var(--green)' : 'var(--amber)';
+            return '<tr>' +
+              '<td style="padding:3px 5px;color:var(--muted);font-size:.70rem;">' + (d.karyawan_id) + '</td>' +
+              '<td style="padding:3px 5px;color:var(--muted);font-size:.70rem;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + d.nama + '</td>' +
+              '<td style="padding:3px 5px;"><span style="font-size:.67rem;font-weight:700;color:' + color + ';">' + d.tipe.toUpperCase() + '</span></td>' +
+              '<td style="padding:3px 5px;color:var(--text);font-size:.70rem;white-space:nowrap;">' + d.waktu.slice(11,16) + '</td>' +
+            '</tr>';
+          }).join('');
+          el.innerHTML =
+            '<table style="width:100%;border-collapse:collapse;">' +
+              '<thead><tr>' +
+                '<th style="font-size:.62rem;color:var(--muted);padding:3px 5px;text-align:left;font-weight:500;border-bottom:1px solid var(--border);">ID</th>' +
+                '<th style="font-size:.62rem;color:var(--muted);padding:3px 5px;text-align:left;font-weight:500;border-bottom:1px solid var(--border);">Nama</th>' +
+                '<th style="font-size:.62rem;color:var(--muted);padding:3px 5px;text-align:left;font-weight:500;border-bottom:1px solid var(--border);">Tipe</th>' +
+                '<th style="font-size:.62rem;color:var(--muted);padding:3px 5px;text-align:left;font-weight:500;border-bottom:1px solid var(--border);">Jam</th>' +
+              '</tr></thead>' +
+              '<tbody>' + rows + '</tbody>' +
+            '</table>';
+        }).catch(function(){});
+    }
+    loadSidebarAbsensi();
+    setInterval(loadSidebarAbsensi, 20000);
+  })();
+  </script>
+  {% endif %}
+
   <div class="sidebar-footer">
     <div class="footer-avatar"><i data-lucide="user" style="width:14px;height:14px;"></i></div>
     <div class="footer-info">
