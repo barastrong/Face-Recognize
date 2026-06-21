@@ -130,6 +130,8 @@ def init_db():
         cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS location VARCHAR(255)')
         cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shift_master(id) ON DELETE SET NULL')
         cur.execute('ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS foto_urls JSONB DEFAULT \'[]\'')
+        cur.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_login BOOLEAN DEFAULT FALSE')
+        cur.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS address VARCHAR(255)')
         conn.commit()
         cur.close()
         conn.close()
@@ -147,8 +149,8 @@ def seed_admin():
         cur.execute('SELECT id FROM "user" WHERE email = %s', ("admin@local",))
         if cur.fetchone() is None:
             cur.execute(
-                'INSERT INTO "user" (username, email, password, role, nip) '
-                'VALUES (%s, %s, %s, %s, %s)',
+                'INSERT INTO "user" (username, email, password, role, nip, , is_login, address) '
+                'VALUES (%s, %s, %s, %s, %s, %s, %s)',
                 ("admin", "admin@local", generate_password_hash("admin123"), "admin", None)
             )
             conn.commit()
@@ -163,7 +165,7 @@ def get_users():
     try:
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute('SELECT id, nip, username, email, role FROM "user" ORDER BY id')
+        cur.execute('SELECT id, nip, username, email, role, is_login, address FROM "user" ORDER BY id')
         rows = [dict(r) for r in cur.fetchall()]
         cur.close(); conn.close()
         return rows
@@ -178,7 +180,7 @@ def get_user_by_email(email: str):
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            'SELECT id, nip, username, email, password, role FROM "user" WHERE email = %s',
+            'SELECT id, nip, username, email, password, role, is_login, address FROM "user" WHERE email = %s',
             (email,)
         )
         row = cur.fetchone()
@@ -194,7 +196,7 @@ def get_user_by_id(user_id: int):
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(
-            'SELECT id, nip, username, email, password, role FROM "user" WHERE id = %s',
+            'SELECT id, nip, username, email, password, role, is_login, address FROM "user" WHERE id = %s',
             (user_id,)
         )
         row = cur.fetchone()
@@ -217,7 +219,7 @@ def tambah_user(email, username, password, role="karyawan", nip=None) -> dict:
             return {"success": False, "msg": f"Email '{email}' sudah terdaftar"}
         cur.execute(
             'INSERT INTO "user" (nip, username, email, password, role) '
-            'VALUES (%s, %s, %s, %s, %s)',
+            'VALUES (%s, %s, %s, %s, %s, %s)',
             (nip, username or email, email, generate_password_hash(password), role)
         )
         conn.commit()
@@ -867,6 +869,116 @@ def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
     except Exception as e:
         print(f'[ERROR] get_absensi_karyawan: {e}')
         return []
+
+
+# ── OVERTIME REQUEST ─────────────────────────────────────────────────────────
+
+def buat_overtime_request(karyawan_id: int, nip: str, nama: str,
+                           tanggal: str, jam_mulai: str, jam_selesai: str,
+                           alasan: str) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'INSERT INTO overtime_request '
+            '(karyawan_id, nip, nama, tanggal, jam_mulai, jam_selesai, alasan) '
+            'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+            (karyawan_id, nip, nama, tanggal, jam_mulai, jam_selesai, alasan)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Permintaan lembur berhasil diajukan'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def get_overtime_requests(karyawan_id: int = None) -> list:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if karyawan_id:
+            cur.execute('SELECT * FROM overtime_request WHERE karyawan_id = %s ORDER BY dibuat DESC', (karyawan_id,))
+        else:
+            cur.execute('SELECT * FROM overtime_request ORDER BY dibuat DESC')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        for r in rows:
+            r['tanggal']          = r['tanggal'].strftime('%Y-%m-%d') if r['tanggal'] else '-'
+            r['jam_mulai']        = str(r['jam_mulai'])[:5] if r['jam_mulai'] else '-'
+            r['jam_selesai']      = str(r['jam_selesai'])[:5] if r['jam_selesai'] else '-'
+            r['dibuat']           = r['dibuat'].strftime('%Y-%m-%d %H:%M') if r['dibuat'] else '-'
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_overtime_requests: {e}')
+        return []
+
+
+def update_overtime_status(req_id: int, status: str, catatan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'UPDATE overtime_request SET status = %s, catatan_admin = %s WHERE id = %s',
+            (status, catatan, req_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f'Status diubah ke {status}'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── HOME EARLY REQUEST ────────────────────────────────────────────────────────
+
+def buat_home_early_request(karyawan_id: int, nip: str, nama: str,
+                             tanggal: str, jam_pulang_normal: str,
+                             jam_pulang_awal: str, alasan: str) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'INSERT INTO home_early_request '
+            '(karyawan_id, nip, nama, tanggal, jam_pulang_normal, jam_pulang_awal, alasan) '
+            'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+            (karyawan_id, nip, nama, tanggal, jam_pulang_normal or None, jam_pulang_awal, alasan)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Permintaan pulang awal berhasil diajukan'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def get_home_early_requests(karyawan_id: int = None) -> list:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if karyawan_id:
+            cur.execute('SELECT * FROM home_early_request WHERE karyawan_id = %s ORDER BY dibuat DESC', (karyawan_id,))
+        else:
+            cur.execute('SELECT * FROM home_early_request ORDER BY dibuat DESC')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        for r in rows:
+            r['tanggal']           = r['tanggal'].strftime('%Y-%m-%d') if r['tanggal'] else '-'
+            r['jam_pulang_normal'] = str(r['jam_pulang_normal'])[:5] if r['jam_pulang_normal'] else '-'
+            r['jam_pulang_awal']   = str(r['jam_pulang_awal'])[:5] if r['jam_pulang_awal'] else '-'
+            r['dibuat']            = r['dibuat'].strftime('%Y-%m-%d %H:%M') if r['dibuat'] else '-'
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_home_early_requests: {e}')
+        return []
+
+
+def update_home_early_status(req_id: int, status: str, catatan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'UPDATE home_early_request SET status = %s, catatan_admin = %s WHERE id = %s',
+            (status, catatan, req_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f'Status diubah ke {status}'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
 
 
 def get_shift_aktif_karyawan(karyawan_id: int) -> dict:

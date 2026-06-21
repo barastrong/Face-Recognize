@@ -73,7 +73,13 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Username</th><th>Role</th><th>NIP</th><th>Aksi</th></tr>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>NIP</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
         </thead>
         <tbody>
           {% for u in users %}
@@ -97,6 +103,13 @@
                 <span style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);padding:2px 8px;border-radius:99px;font-size:.72rem;">Belum diisi</span>
               {% endif %}
             </td>
+            <td>
+              {% if u.is_login == True %}
+              <span>Login</span>
+              {% else %}
+              <span>Logout</span>
+              {% endif %}
+            </td> 
             <td>
               {% if u.id != session.user_id %}
               <form method="POST" action="{{ url_for('admin_hapus_user', user_id=u.id) }}"

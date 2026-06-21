@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}Permintaan Pulang Awal · Face ID{% endblock %}
+{% block title_short %}<i data-lucide="door-open" style="width:16px;height:16px;"></i> Permintaan Pulang Awal{% endblock %}
+{% block content %}
+<style>
+  .time-picker { display:flex; align-items:center; gap:8px; }
+  .time-picker select {
+    background:var(--bg); border:1px solid var(--border); color:var(--text);
+    padding:8px 10px; border-radius:8px; font-size:.95rem; font-weight:600;
+    outline:none; cursor:pointer; transition:border-color .15s; min-width:68px; text-align:center;
+  }
+  .time-picker select:focus { border-color:var(--accent); }
+  .time-sep { font-size:1.2rem; font-weight:700; color:var(--accent); }
+  .time-preview {
+    display:flex; align-items:center; gap:10px;
+    background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:11px 14px;
+  }
+  .time-block { text-align:center; }
+  .time-block .lbl { font-size:.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .time-block .val { font-size:1.15rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .diff-badge { margin-left:auto; border-radius:8px; padding:5px 12px; text-align:center; }
+  .diff-badge .lbl { font-size:.65rem; color:var(--muted); }
+  .diff-badge .val { font-size:.9rem; font-weight:700; }
+
+  #form-panel {
+    overflow:hidden; max-height:0;
+    transition:max-height .35s ease, opacity .25s ease;
+    opacity:0;
+  }
+  #form-panel.open { max-height:700px; opacity:1; }
+</style>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><i data-lucide="door-open" style="width:20px;height:20px;"></i> Permintaan Pulang Awal</h1>
+    <div class="page-sub">Riwayat dan pengajuan izin pulang lebih awal</div>
+  </div>
+</div>
+
+<!-- CARD UTAMA -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i data-lucide="list" style="width:15px;height:15px;"></i> Riwayat Pengajuan
+    </div>
+    <button class="btn btn-primary btn-sm" id="btn-toggle" onclick="toggleForm()">
+      <i data-lucide="plus" style="width:13px;height:13px;"></i> Ajukan Pulang Awal
+    </button>
+  </div>
+
+  <!-- FORM PANEL -->
+  <div id="form-panel">
+    <div style="border:1px solid var(--border);border-radius:11px;padding:18px;margin-bottom:20px;background:var(--surface2);">
+
+      {% if shift %}
+      <div style="background:var(--accent-dim);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:9px 13px;margin-bottom:14px;font-size:.81rem;display:flex;align-items:center;gap:8px;">
+        <i data-lucide="info" style="width:13px;height:13px;color:var(--accent);flex-shrink:0;"></i>
+        Shift aktif: <strong style="color:var(--accent);">{{ shift.nama_shift }}</strong>
+        &mdash; normal pulang <strong style="color:var(--accent);">{{ (shift.jam_pulang|string)[:5] }}</strong>
+      </div>
+      {% endif %}
+
+      <form method="POST" id="he-form">
+        <input type="hidden" name="jam_pulang_normal" id="hid-normal">
+        <input type="hidden" name="jam_pulang_awal"   id="hid-awal">
+
+        <div class="grid-2" style="gap:14px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Tanggal</label>
+            <input type="date" name="tanggal" class="form-control" value="{{ today }}" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Alasan</label>
+            <textarea name="alasan" class="form-control" rows="1" style="resize:none;"
+                      placeholder="Contoh: keperluan keluarga, urusan medis…" required></textarea>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:14px;margin-top:14px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label" style="display:flex;align-items:center;gap:5px;">
+              Jam Pulang Normal
+              <span style="font-size:.7rem;color:var(--muted);font-weight:400;">(dari shift)</span>
+            </label>
+            <div class="time-picker">
+              <select id="normal-h" onchange="updatePreview()"></select>
+              <span class="time-sep">:</span>
+              <select id="normal-m" onchange="updatePreview()"></select>
+              <span style="font-size:.75rem;color:var(--muted);">WIB</span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Ingin Pulang Pukul</label>
+            <div class="time-picker">
+              <select id="awal-h" onchange="updatePreview()"></select>
+              <span class="time-sep">:</span>
+              <select id="awal-m" onchange="updatePreview()"></select>
+              <span style="font-size:.75rem;color:var(--muted);">WIB</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="time-preview" style="margin-top:14px;">
+          <div class="time-block">
+            <div class="lbl">Jam Normal</div>
+            <div class="val" id="prev-normal" style="color:var(--text);">--:--</div>
+          </div>
+          <div style="color:var(--muted);">→</div>
+          <div class="time-block">
+            <div class="lbl">Pulang Awal</div>
+            <div class="val" id="prev-awal" style="color:var(--amber);">--:--</div>
+          </div>
+          <div class="diff-badge" id="diff-badge"
+               style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);">
+            <div class="lbl">Lebih awal</div>
+            <div class="val" id="prev-diff" style="color:var(--amber);">—</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;">
+            <i data-lucide="send" style="width:13px;height:13px;"></i> Kirim Permintaan
+          </button>
+          <button type="button" class="btn btn-outline" onclick="toggleForm()">Batal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TABEL -->
+  {% if riwayat %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Tanggal</th>
+          <th>Jam Normal</th>
+          <th>Pulang Awal</th>
+          <th>Alasan</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in riwayat %}
+        <tr>
+          <td class="td-muted">{{ loop.index }}</td>
+          <td style="white-space:nowrap;">{{ r.tanggal }}</td>
+          <td class="td-muted" style="font-family:monospace;">{{ r.jam_pulang_normal }}</td>
+          <td style="color:var(--amber);font-weight:600;font-family:monospace;">{{ r.jam_pulang_awal }}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="{{ r.alasan }}">{{ r.alasan }}</td>
+          <td>
+            {% if r.status == 'approved' %}
+              <span class="badge badge-masuk">Disetujui</span>
+            {% elif r.status == 'rejected' %}
+              <span class="badge" style="background:rgba(239,68,68,.12);color:var(--red);">Ditolak</span>
+            {% else %}
+              <span class="badge badge-karyawan">Menunggu</span>
+            {% endif %}
+            {% if r.catatan_admin %}
+              <div style="font-size:.71rem;color:var(--muted);margin-top:3px;">{{ r.catatan_admin }}</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;color:var(--muted);padding:40px 20px;">
+    <i data-lucide="door-open" style="width:32px;height:32px;margin-bottom:10px;opacity:.3;display:block;margin-inline:auto;"></i>
+    Belum ada pengajuan pulang awal.<br>
+    <span style="font-size:.82rem;">Klik <strong>Ajukan Pulang Awal</strong> untuk memulai.</span>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  var shiftPulang = "{{ (shift.jam_pulang|string)[:5] if shift else '' }}";
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function buildHours(id,def){
+    var s=document.getElementById(id);
+    for(var h=0;h<24;h++){
+      var o=document.createElement('option');
+      o.value=pad(h);o.textContent=pad(h)+' jam';
+      if(h===def)o.selected=true;s.appendChild(o);
+    }
+  }
+  function buildMins(id,def){
+    var s=document.getElementById(id);
+    [0,15,30,45].forEach(function(m){
+      var o=document.createElement('option');
+      o.value=pad(m);o.textContent=pad(m)+' mnt';
+      if(m===def)o.selected=true;s.appendChild(o);
+    });
+  }
+
+  var defNormalH=17;
+  if(shiftPulang){ defNormalH=parseInt(shiftPulang.split(':')[0])||17; }
+  var defAwalH=defNormalH-1>=0?defNormalH-1:0;
+
+  buildHours('normal-h',defNormalH); buildMins('normal-m',0);
+  buildHours('awal-h',  defAwalH);   buildMins('awal-m',  0);
+
+  function updatePreview(){
+    var nH=document.getElementById('normal-h').value, nM=document.getElementById('normal-m').value;
+    var aH=document.getElementById('awal-h').value,   aM=document.getElementById('awal-m').value;
+    document.getElementById('prev-normal').textContent=nH+':'+nM;
+    document.getElementById('prev-awal').textContent  =aH+':'+aM;
+    var diff=(parseInt(nH)*60+parseInt(nM))-(parseInt(aH)*60+parseInt(aM));
+    var badge=document.getElementById('diff-badge');
+    var diffEl=document.getElementById('prev-diff');
+    if(diff>0){
+      var dh=Math.floor(diff/60),dm=diff%60;
+      diffEl.textContent=(dh>0?dh+' jam ':''+(dm>0?dm+' mnt':''));
+      badge.style.background='rgba(245,158,11,.1)';badge.style.border='1px solid rgba(245,158,11,.25)';
+      diffEl.style.color='var(--amber)';
+    } else if(diff===0){
+      diffEl.textContent='—';
+    } else {
+      diffEl.textContent='Lebih lambat!';
+      badge.style.background='rgba(239,68,68,.1)';badge.style.border='1px solid rgba(239,68,68,.25)';
+      diffEl.style.color='var(--red)';
+    }
+    document.getElementById('hid-normal').value=nH+':'+nM;
+    document.getElementById('hid-awal').value  =aH+':'+aM;
+  }
+
+  document.getElementById('he-form').addEventListener('submit',function(e){
+    updatePreview();
+    var nMin=parseInt(document.getElementById('normal-h').value)*60+parseInt(document.getElementById('normal-m').value);
+    var aMin=parseInt(document.getElementById('awal-h').value)*60+parseInt(document.getElementById('awal-m').value);
+    if(aMin>=nMin){e.preventDefault();alert('Jam pulang awal harus lebih awal dari jam pulang normal.');}
+  });
+  updatePreview();
+
+  function toggleForm(){
+    var panel=document.getElementById('form-panel');
+    var btn=document.getElementById('btn-toggle');
+    var isOpen=panel.classList.contains('open');
+    if(isOpen){
+      panel.classList.remove('open');
+      btn.innerHTML='<i data-lucide="plus" style="width:13px;height:13px;"></i> Ajukan Pulang Awal';
+    } else {
+      panel.classList.add('open');
+      btn.innerHTML='<i data-lucide="x" style="width:13px;height:13px;"></i> Tutup';
+    }
+    lucide.createIcons();
+  }
+</script>
+{% endblock %}

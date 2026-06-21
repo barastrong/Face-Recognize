@@ -1,7 +1,7 @@
 import os, base64, io
 from datetime import date, timedelta, datetime
 from functools import wraps
-
+import socket
 import numpy as np
 import cv2
 from PIL import Image
@@ -18,6 +18,9 @@ from face_engine import (
     tambah_user, hapus_user, get_users,
     get_shift_list, tambah_shift, hapus_shift, edit_shift,
     get_absensi_karyawan,
+    buat_overtime_request, get_overtime_requests, update_overtime_status,
+    buat_home_early_request, get_home_early_requests, update_home_early_status,
+    get_shift_aktif_karyawan, get_db_connection
 )
 
 load_dotenv()
@@ -87,12 +90,33 @@ def login():
         password = request.form.get("password", "")
         user = get_user_by_email(email)
         if user and check_password_hash(user["password"], password):
+            try:
+                hostname = socket.gethostname()
+                ipv4_address = socket.gethostbyname(hostname)
+            except:
+                ipv4_address = "Tidak diketahui"
             session["user_id"]  = user["id"]
             session["email"]    = user["email"]
             session["username"] = user.get("username")
             session["role"]     = user["role"]
             session["nip"]      = user.get("nip")
+            session["is_login"] = True
+            session['address'] = ipv4_address
             flash(f"Selamat datang, {user.get('username') or user['email']}!", "success")
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            cur.execute("""
+                UPDATE "user"
+                SET
+                    is_login = %s,
+                    address = %s
+                WHERE id = %s
+            """, (True, ipv4_address, user["id"]))
+        
+            conn.commit()
+            cur.close()
+            conn.close()
             if user["role"] == "admin":
                 return redirect(url_for("admin_dashboard"))
             return redirect(url_for("absensi"))
@@ -101,8 +125,36 @@ def login():
 
 @app.route("/logout")
 def logout():
+
+    user_id = session.get("user_id")
+
+    if user_id:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute(""" 
+                UPDATE "user" 
+                SET 
+                    is_login = %s,
+                    address = %s
+                WHERE id = %s
+        """, (False, "None", user_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
     session.clear()
     return redirect(url_for("login"))
+
+@app.route("/profile")
+def profile():
+    return {
+        "username": session.get("username"),
+        "email": session.get("email"),
+        "role": session.get("role"),
+        "is_login": session.get("is_login"),
+        "ipv4_address": session.get("address")
+    }
 
 @app.route("/absensi")
 @login_required
@@ -448,6 +500,131 @@ def admin_hapus_shift(shift_id):
     r = hapus_shift(shift_id)
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
+
+# ── helper: resolve karyawan_id dari session ──────────────────────────────
+def _get_karyawan_id_from_session():
+    nip = session.get('nip')
+    if not nip:
+        return None, None, None
+    from face_engine import get_db_connection
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('SELECT id, nip, nama FROM karyawan WHERE nip = %s LIMIT 1', (nip,))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row:
+            return row[0], row[1], row[2]
+        try:
+            kid = int(nip)
+            conn = get_db_connection()
+            cur  = conn.cursor()
+            cur.execute('SELECT id, nip, nama FROM karyawan WHERE id = %s LIMIT 1', (kid,))
+            row = cur.fetchone()
+            cur.close(); conn.close()
+            return (row[0], row[1], row[2]) if row else (None, None, None)
+        except Exception:
+            return None, None, None
+    except Exception:
+        return None, None, None
+
+
+# ── Overtime Request (User) ───────────────────────────────────────────────
+@app.route('/overtime', methods=['GET', 'POST'])
+@login_required
+def overtime():
+    karyawan_id, nip, nama = _get_karyawan_id_from_session()
+    shift = get_shift_aktif_karyawan(karyawan_id) if karyawan_id else None
+    if request.method == 'POST':
+        if not karyawan_id:
+            flash('NIP belum diisi di akun. Hubungi admin.', 'danger')
+            return redirect(request.url)
+        tanggal     = request.form.get('tanggal', '')
+        jam_mulai   = request.form.get('jam_mulai', '')
+        jam_selesai = request.form.get('jam_selesai', '')
+        alasan      = request.form.get('alasan', '').strip()
+        if not (tanggal and jam_mulai and jam_selesai and alasan):
+            flash('Semua field wajib diisi.', 'danger')
+            return redirect(request.url)
+        r = buat_overtime_request(karyawan_id, nip, nama, tanggal, jam_mulai, jam_selesai, alasan)
+        flash(r['msg'], 'success' if r['success'] else 'danger')
+        return redirect(url_for('overtime'))
+    riwayat = get_overtime_requests(karyawan_id) if karyawan_id else []
+    return render_template('overtime.html', riwayat=riwayat, shift=shift,
+                           today=date.today().isoformat())
+
+
+# ── Home Early Request (User) ─────────────────────────────────────────────
+@app.route('/home-early', methods=['GET', 'POST'])
+@login_required
+def home_early():
+    karyawan_id, nip, nama = _get_karyawan_id_from_session()
+    shift = get_shift_aktif_karyawan(karyawan_id) if karyawan_id else None
+    if request.method == 'POST':
+        if not karyawan_id:
+            flash('NIP belum diisi di akun. Hubungi admin.', 'danger')
+            return redirect(request.url)
+        tanggal            = request.form.get('tanggal', '')
+        jam_pulang_normal  = request.form.get('jam_pulang_normal', '').strip() or None
+        jam_pulang_awal    = request.form.get('jam_pulang_awal', '')
+        alasan             = request.form.get('alasan', '').strip()
+        if not (tanggal and jam_pulang_awal and alasan):
+            flash('Semua field wajib diisi.', 'danger')
+            return redirect(request.url)
+        r = buat_home_early_request(karyawan_id, nip, nama, tanggal,
+                                     jam_pulang_normal, jam_pulang_awal, alasan)
+        flash(r['msg'], 'success' if r['success'] else 'danger')
+        return redirect(url_for('home_early'))
+    riwayat = get_home_early_requests(karyawan_id) if karyawan_id else []
+    return render_template('home_early.html', riwayat=riwayat, shift=shift,
+                           today=date.today().isoformat())
+
+
+# ── Admin Overtime Dashboard ──────────────────────────────────────────────
+@app.route('/admin/overtime')
+@admin_required
+def admin_overtime():
+    status = request.args.get('status', '')
+    data   = get_overtime_requests()
+    if status:
+        data = [d for d in data if d['status'] == status]
+    return render_template('admin/admin_overtime.html', data=data, status=status)
+
+
+@app.route('/admin/overtime/<int:req_id>/update', methods=['POST'])
+@admin_required
+def admin_update_overtime(req_id):
+    r = update_overtime_status(
+        req_id,
+        request.form.get('status', 'pending'),
+        request.form.get('catatan', '')
+    )
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_overtime'))
+
+
+# ── Admin Home Early Dashboard ────────────────────────────────────────────
+@app.route('/admin/home-early')
+@admin_required
+def admin_home_early():
+    status = request.args.get('status', '')
+    data   = get_home_early_requests()
+    if status:
+        data = [d for d in data if d['status'] == status]
+    return render_template('admin/admin_home_early.html', data=data, status=status)
+
+
+@app.route('/admin/home-early/<int:req_id>/update', methods=['POST'])
+@admin_required
+def admin_update_home_early(req_id):
+    r = update_home_early_status(
+        req_id,
+        request.form.get('status', 'pending'),
+        request.form.get('catatan', '')
+    )
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_home_early'))
+
 
 if __name__ == "__main__":
     init_db()

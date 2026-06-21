@@ -210,6 +210,18 @@
       <span class="nav-icon"><i data-lucide="history" style="width:16px;height:16px;"></i></span>
       Riwayat Saya
     </a>
+    <a href="{{ url_for('overtime') }}"
+       class="nav-item {% if request.endpoint == 'overtime' %}active{% endif %}"
+       onclick="closeSidebar()">
+      <span class="nav-icon"><i data-lucide="clock-8" style="width:16px;height:16px;"></i></span>
+      Lembur Request
+    </a>
+    <a href="{{ url_for('home_early') }}"
+       class="nav-item {% if request.endpoint == 'home_early' %}active{% endif %}"
+       onclick="closeSidebar()">
+      <span class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></span>
+      Pulang Awal Request
+    </a>
     </div>
     {% if session.get('role') == 'admin' %}
     <div class="nav-label">Admin</div>
@@ -242,6 +254,18 @@
        onclick="closeSidebar()">
       <span class="nav-icon"><i data-lucide="clock-4" style="width:16px;height:16px;"></i></span>
       Shift
+    </a>
+    <a href="{{ url_for('admin_overtime') }}"
+       class="nav-item {% if request.endpoint == 'admin_overtime' %}active{% endif %}"
+       onclick="closeSidebar()">
+      <span class="nav-icon"><i data-lucide="clock-8" style="width:16px;height:16px;"></i></span>
+      Lembur Approval
+    </a>
+    <a href="{{ url_for('admin_home_early') }}"
+       class="nav-item {% if request.endpoint == 'admin_home_early' %}active{% endif %}"
+       onclick="closeSidebar()">
+      <span class="nav-icon"><i data-lucide="door-open" style="width:16px;height:16px;"></i></span>
+      Pulang Awal Approval
     </a>
     {% endif %}
   </nav>
