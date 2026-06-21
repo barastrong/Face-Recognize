@@ -1,67 +1,66 @@
 {% extends "base.html" %}
 {% block title %}Dashboard Admin · Face ID{% endblock %}
-{% block title_short %}<i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i> Dashboard{% endblock %}
+{% block title_short %}<i class="bi bi-grid me-1"></i> Dashboard{% endblock %}
 {% block content %}
 
 <div class="page-header">
-  <div class="page-header-left">
-    <h1><i data-lucide="layout-dashboard" style="width:20px;height:20px;"></i> Dashboard Admin</h1>
-    <div class="page-sub">Rekap absensi hari ini &mdash; <span id="tanggal-hari-ini"></span></div>
+  <div>
+    <h1><i class="bi bi-grid" style="color:var(--accent);"></i> Dashboard Admin</h1>
+    <div class="page-sub">Rekap absensi hari ini — <span id="tanggal-hari-ini"></span></div>
   </div>
 </div>
 
-<div class="grid-4" style="margin-bottom:20px;">
-  <div class="card metric">
-    <div class="metric-icon bg-accent"><i data-lucide="users" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-accent">{{ total_karyawan }}</div>
-    <div class="metric-lbl">Total Karyawan</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-accent-soft"><i class="bi bi-people"></i></div>
+      <div class="metric-num c-accent">{{ total_karyawan }}</div>
+      <div class="metric-lbl">Total Karyawan</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-green"><i data-lucide="log-in" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-green">{{ n_masuk }}</div>
-    <div class="metric-lbl">Masuk Hari Ini</div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-green-soft"><i class="bi bi-box-arrow-in-right"></i></div>
+      <div class="metric-num c-green">{{ n_masuk }}</div>
+      <div class="metric-lbl">Masuk Hari Ini</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-amber"><i data-lucide="log-out" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-amber">{{ n_pulang }}</div>
-    <div class="metric-lbl">Sudah Pulang</div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-amber-soft"><i class="bi bi-box-arrow-right"></i></div>
+      <div class="metric-num c-amber">{{ n_pulang }}</div>
+      <div class="metric-lbl">Sudah Pulang</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-red"><i data-lucide="user-x" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-red">{{ [total_karyawan - n_masuk, 0]|max }}</div>
-    <div class="metric-lbl">Belum Absen</div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-red-soft"><i class="bi bi-person-x"></i></div>
+      <div class="metric-num c-red">{{ [total_karyawan - n_masuk, 0]|max }}</div>
+      <div class="metric-lbl">Belum Absen</div>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <div class="card-title"><i data-lucide="table-2" style="width:16px;height:16px;"></i> Absensi Hari Ini</div>
-    <a href="{{ url_for('admin_laporan') }}" class="btn btn-outline btn-sm">
-      <i data-lucide="file-bar-chart" style="width:13px;height:13px;"></i> Lihat Laporan
+<div class="card p-3">
+  <div class="card-header-custom">
+    <span class="card-title-text"><i class="bi bi-table"></i> Absensi Hari Ini</span>
+    <a href="{{ url_for('admin_laporan') }}" class="btn-ghost btn-sm-icon">
+      <i class="bi bi-bar-chart-line"></i> Lihat Laporan
     </a>
   </div>
   <div class="table-wrap">
-    <table>
+    <table class="data-table">
       <thead>
         <tr>
-          <th>No</th>
-          <th>Nama</th>
-          <th>NIP</th>
-          <th>Shift</th>
-          <th>Check In</th>
-          <th>Check Out</th>
-          <th>Time</th>
-          <th>Lokasi</th>
+          <th>No</th><th>Nama</th><th>NIP</th><th>Shift</th>
+          <th>Check In</th><th>Check Out</th><th>Durasi</th><th>Lokasi</th>
         </tr>
       </thead>
       <tbody>
-        {# absensi dari get_absensi_hari_ini: list per event (masuk/pulang)
-           kita group by nip untuk tampilan satu baris per karyawan #}
         {% set seen = namespace(nips=[]) %}
         {% for a in absensi %}
           {% if a.tipe == 'masuk' and a.nip not in seen.nips %}
             {% set _ = seen.nips.append(a.nip) %}
-            {# cari event pulang pasangannya #}
             {% set checkout = namespace(waktu='-', loc=a.location) %}
             {% for b in absensi %}
               {% if b.nip == a.nip and b.tipe == 'pulang' %}
@@ -75,7 +74,7 @@
               <td class="td-muted">{{ a.nip }}</td>
               <td>
                 {% if a.nama_shift != '-' %}
-                  <span class="badge" style="background:var(--accent-dim);color:var(--accent);">{{ a.nama_shift }}</span>
+                  <span class="status-badge badge-admin">{{ a.nama_shift }}</span>
                 {% else %}
                   <span class="td-muted">–</span>
                 {% endif %}
@@ -90,25 +89,19 @@
                   <span class="td-muted">–</span>
                 {% endif %}
               </td>
-              <td style="white-space:nowrap;font-family:monospace;font-size:.85rem;">
-                {% set ts = a.waktu | int(default=0) %}
+              <td style="white-space:nowrap;font-family:monospace;font-size:.84rem;">
                 {% if checkout.waktu != '-' %}
-                  {# durasi statis #}
-                  {% set ci_parts = a.waktu[11:19].split(':') %}
-                  {% set co_parts = checkout.waktu[11:19].split(':') %}
-                  {% set ci_sec = ci_parts[0]|int * 3600 + ci_parts[1]|int * 60 + ci_parts[2]|int %}
-                  {% set co_sec = co_parts[0]|int * 3600 + co_parts[1]|int * 60 + co_parts[2]|int %}
-                  {% set dur = co_sec - ci_sec %}
-                  {% if dur < 0 %}{% set dur = dur + 86400 %}{% endif %}
-                  {% set dh = (dur // 3600) %}
-                  {% set dm = ((dur % 3600) // 60) %}
-                  {% set ds = (dur % 60) %}
-                  <span style="color:var(--muted);">{{ '%02d'|format(dh) }}:{{ '%02d'|format(dm) }}:{{ '%02d'|format(ds) }}</span>
+                  {% set ci = a.waktu[11:19].split(':') %}
+                  {% set co = checkout.waktu[11:19].split(':') %}
+                  {% set ci_s = ci[0]|int*3600 + ci[1]|int*60 + ci[2]|int %}
+                  {% set co_s = co[0]|int*3600 + co[1]|int*60 + co[2]|int %}
+                  {% set dur = co_s - ci_s %}{% if dur<0 %}{% set dur = dur+86400 %}{% endif %}
+                  <span class="td-muted">{{ '%02d'|format(dur//3600) }}:{{ '%02d'|format((dur%3600)//60) }}:{{ '%02d'|format(dur%60) }}</span>
                 {% else %}
                   <span class="live-timer" data-start-str="{{ a.waktu[11:19] }}">00:00:00</span>
                 {% endif %}
               </td>
-              <td class="td-muted" style="font-size:.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              <td class="td-muted" style="font-size:.77rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                   title="{{ checkout.loc or a.location }}">
                 {{ (checkout.loc or a.location) or '–' }}
               </td>
@@ -116,7 +109,7 @@
           {% endif %}
         {% else %}
         <tr>
-          <td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">
+          <td colspan="8" style="text-align:center;color:var(--muted);padding:36px;">
             Belum ada absensi hari ini
           </td>
         </tr>
@@ -127,30 +120,27 @@
 </div>
 
 <script>
-  // Tanggal hari ini
   var d = new Date();
   var days   = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   document.getElementById('tanggal-hari-ini').textContent =
     days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
 
-  // Live timer — data-start-str berformat "HH:MM:SS" waktu check-in server
   function fmtSec(s) {
-    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+    return String(Math.floor(s/3600)).padStart(2,'0') + ':' +
+           String(Math.floor((s%3600)/60)).padStart(2,'0') + ':' +
+           String(s%60).padStart(2,'0');
   }
   function tickDashboard() {
     var now = new Date();
     var nowSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
     document.querySelectorAll('.live-timer').forEach(function(el) {
       var parts = el.dataset.startStr.split(':');
-      var startSec = parseInt(parts[0])*3600 + parseInt(parts[1])*60 + parseInt(parts[2]);
-      var diff = nowSec - startSec;
+      var diff = nowSec - (parseInt(parts[0])*3600 + parseInt(parts[1])*60 + parseInt(parts[2]));
       if (diff < 0) diff += 86400;
       el.textContent = fmtSec(diff);
     });
   }
-  tickDashboard();
-  setInterval(tickDashboard, 1000);
+  tickDashboard(); setInterval(tickDashboard, 1000);
 </script>
 {% endblock %}

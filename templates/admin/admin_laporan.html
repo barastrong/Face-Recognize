@@ -1,51 +1,45 @@
 {% extends "base.html" %}
 {% block title %}Laporan · Face ID{% endblock %}
-{% block title_short %}<i data-lucide="file-bar-chart" style="width:16px;height:16px;"></i> Laporan{% endblock %}
+{% block title_short %}<i class="bi bi-bar-chart-line me-1"></i> Laporan{% endblock %}
 {% block content %}
 <style>
-  .filter-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-  .filter-form .form-group { margin: 0; flex: 1; min-width: 140px; }
-  .filter-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
-  .form-control[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 1; cursor: pointer; }
-
-  .badge-tepat   { background: rgba(34,197,94,.12);  color: var(--green);  }
-  .badge-lambat  { background: rgba(239,68,68,.12);  color: var(--red);    }
-  .badge-noshift { background: rgba(107,114,128,.12);color: var(--muted);  }
-
-  @media (max-width: 540px) {
-    .filter-form { flex-direction: column; }
-    .filter-actions { width: 100%; }
-    .filter-actions .btn { flex: 1; justify-content: center; }
-  }
+  .form-input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(1); opacity:.7; cursor:pointer; }
+  .badge-tepat   { background:rgba(34,197,94,.12)!important; color:var(--green)!important; border:1px solid rgba(34,197,94,.25)!important; }
+  .badge-lambat  { background:rgba(239,68,68,.12)!important; color:var(--red)!important;   border:1px solid rgba(239,68,68,.25)!important; }
+  .badge-noshift { background:rgba(107,114,128,.12)!important;color:var(--muted)!important;border:1px solid rgba(107,114,128,.2)!important; }
 </style>
 
 <div class="page-header">
-  <div class="page-header-left">
-    <h1><i data-lucide="file-bar-chart" style="width:20px;height:20px;"></i> Laporan Absensi</h1>
+  <div>
+    <h1><i class="bi bi-bar-chart-line" style="color:var(--accent);"></i> Laporan Absensi</h1>
     <div class="page-sub">Filter dan export data absensi beserta shift &amp; status kehadiran</div>
   </div>
 </div>
 
 <!-- Filter -->
-<div class="card" style="margin-bottom:18px;">
-  <form method="GET" id="filter-form" class="filter-form">
-    <div class="form-group">
-      <label class="form-label">Dari tanggal</label>
-      <input class="form-control" type="date" name="dari" value="{{ tgl_awal }}"
-             onchange="document.getElementById('filter-form').submit()">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Sampai tanggal</label>
-      <input class="form-control" type="date" name="sampai" value="{{ tgl_akhir }}"
-             onchange="document.getElementById('filter-form').submit()">
-    </div>
-    <div class="filter-actions">
-      <button class="btn btn-primary" type="submit">
-        <i data-lucide="filter" style="width:14px;height:14px;"></i> Filter
-      </button>
-      <a href="{{ url_for('admin_export', dari=tgl_awal, sampai=tgl_akhir) }}" class="btn btn-outline">
-        <i data-lucide="download" style="width:14px;height:14px;"></i> Export Excel
-      </a>
+<div class="card p-3 mb-4">
+  <form method="GET" id="filter-form">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-sm-4">
+        <label class="form-label">Dari tanggal</label>
+        <input class="form-input" type="date" name="dari" value="{{ tgl_awal }}"
+               onchange="document.getElementById('filter-form').submit()">
+      </div>
+      <div class="col-12 col-sm-4">
+        <label class="form-label">Sampai tanggal</label>
+        <input class="form-input" type="date" name="sampai" value="{{ tgl_akhir }}"
+               onchange="document.getElementById('filter-form').submit()">
+      </div>
+      <div class="col-12 col-sm-4">
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn-accent flex-fill justify-content-center" type="submit">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          <a href="{{ url_for('admin_export', dari=tgl_awal, sampai=tgl_akhir) }}" class="btn-ghost flex-fill justify-content-center">
+            <i class="bi bi-download"></i> Export Excel
+          </a>
+        </div>
+      </div>
     </div>
   </form>
 </div>
@@ -54,48 +48,46 @@
 {% if data %}
 {% set n_tepat  = data | selectattr('status','equalto','Tepat Waktu') | list | length %}
 {% set n_lambat = data | selectattr('status','ne','-') | selectattr('status','ne','Tepat Waktu') | list | length %}
-<div class="grid-4" style="margin-bottom:18px;">
-  <div class="card metric">
-    <div class="metric-icon bg-accent"><i data-lucide="calendar-check" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num">{{ data|length }}</div>
-    <div class="metric-lbl">Total Hari Hadir</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-accent-soft"><i class="bi bi-calendar-check"></i></div>
+      <div class="metric-num">{{ data|length }}</div>
+      <div class="metric-lbl">Total Hadir</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-green"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-green">{{ n_tepat }}</div>
-    <div class="metric-lbl">Tepat Waktu</div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-green-soft"><i class="bi bi-check-circle"></i></div>
+      <div class="metric-num c-green">{{ n_tepat }}</div>
+      <div class="metric-lbl">Tepat Waktu</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-red"><i data-lucide="alarm-clock" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-red">{{ n_lambat }}</div>
-    <div class="metric-lbl">Terlambat</div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-red-soft"><i class="bi bi-alarm"></i></div>
+      <div class="metric-num c-red">{{ n_lambat }}</div>
+      <div class="metric-lbl">Terlambat</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-amber"><i data-lucide="clock" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-amber">{{ data | selectattr('check_out','ne','-') | list | length }}</div>
-    <div class="metric-lbl">Sudah Pulang</div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-amber-soft"><i class="bi bi-clock"></i></div>
+      <div class="metric-num c-amber">{{ data | selectattr('check_out','ne','-') | list | length }}</div>
+      <div class="metric-lbl">Sudah Pulang</div>
+    </div>
   </div>
 </div>
 {% endif %}
 
-<!-- Tabel -->
-<div class="card">
+<div class="card p-3">
   <div class="table-wrap">
-    <table>
+    <table class="data-table">
       <thead>
         <tr>
-          <th>No</th>
-          <th>Tanggal</th>
-          <th>NIP</th>
-          <th>Nama</th>
-          <th>Divisi</th>
-          <th>Shift</th>
-          <th>Jam Shift</th>
-          <th>Check In</th>
-          <th>Check Out</th>
-          <th>Time</th>
-          <th>Status</th>
-          <th>Lokasi</th>
+          <th>No</th><th>Tanggal</th><th>NIP</th><th>Nama</th><th>Divisi</th>
+          <th>Shift</th><th>Jam Shift</th><th>Check In</th><th>Check Out</th>
+          <th>Durasi</th><th>Status</th><th>Lokasi</th>
         </tr>
       </thead>
       <tbody>
@@ -108,53 +100,46 @@
           <td class="td-muted">{{ a.divisi }}</td>
           <td>
             {% if a.nama_shift != '-' %}
-              <span class="badge" style="background:var(--accent-dim);color:var(--accent);">{{ a.nama_shift }}</span>
-            {% else %}
-              <span class="td-muted">–</span>
-            {% endif %}
+              <span class="status-badge badge-admin">{{ a.nama_shift }}</span>
+            {% else %}<span class="td-muted">–</span>{% endif %}
           </td>
-          <td class="td-muted" style="white-space:nowrap;">
-            {% if a.jam_shift_masuk != '-' %}
-              {{ a.jam_shift_masuk }} – {{ a.jam_shift_pulang }}
-            {% else %}–{% endif %}
+          <td class="td-muted" style="white-space:nowrap;font-size:.8rem;">
+            {% if a.jam_shift_masuk != '-' %}{{ a.jam_shift_masuk }} – {{ a.jam_shift_pulang }}{% else %}–{% endif %}
           </td>
           <td style="white-space:nowrap;">
-            {% if a.check_in != '-' %}
-              <span style="color:var(--green);font-weight:600;">{{ a.check_in }}</span>
+            {% if a.check_in != '-' %}<span style="color:var(--green);font-weight:600;">{{ a.check_in }}</span>
             {% else %}<span class="td-muted">–</span>{% endif %}
           </td>
           <td style="white-space:nowrap;">
-            {% if a.check_out != '-' %}
-              <span style="color:var(--amber);font-weight:600;">{{ a.check_out }}</span>
+            {% if a.check_out != '-' %}<span style="color:var(--amber);font-weight:600;">{{ a.check_out }}</span>
             {% else %}<span class="td-muted">–</span>{% endif %}
           </td>
-          <td style="white-space:nowrap;font-family:monospace;font-size:.85rem;">
+          <td style="white-space:nowrap;font-family:monospace;font-size:.83rem;">
             {% if a.check_in_ts %}
               {% if a.durasi_detik is not none %}
-                <span style="color:var(--muted);">{{ a.durasi_fmt }}</span>
+                <span class="td-muted">{{ a.durasi_fmt }}</span>
               {% else %}
                 <span class="live-timer" data-start="{{ a.check_in_ts }}">00:00:00</span>
               {% endif %}
-            {% else %}
-              <span class="td-muted">–</span>
-            {% endif %}
+            {% else %}<span class="td-muted">–</span>{% endif %}
           </td>
           <td>
             {% if a.status == 'Tepat Waktu' %}
-              <span class="badge badge-tepat"><i data-lucide="check" style="width:11px;height:11px;"></i> Tepat Waktu</span>
+              <span class="status-badge badge-tepat"><i class="bi bi-check" style="font-size:11px;"></i> Tepat Waktu</span>
             {% elif a.status == '-' %}
-              <span class="badge badge-noshift">Tanpa Shift</span>
+              <span class="status-badge badge-noshift">Tanpa Shift</span>
             {% else %}
-              <span class="badge badge-lambat"><i data-lucide="alarm-clock" style="width:11px;height:11px;"></i> {{ a.status }}</span>
+              <span class="status-badge badge-lambat"><i class="bi bi-alarm" style="font-size:11px;"></i> {{ a.status }}</span>
             {% endif %}
           </td>
-          <td class="td-muted" style="font-size:.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ a.location }}">
+          <td class="td-muted" style="font-size:.76rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="{{ a.location }}">
             {{ a.location if a.location != '-' else '–' }}
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="12" style="text-align:center;color:var(--muted);padding:32px;">
+          <td colspan="12" style="text-align:center;color:var(--muted);padding:36px;">
             Tidak ada data di rentang tanggal ini
           </td>
         </tr>
@@ -165,24 +150,19 @@
 </div>
 
 <script>
-(function() {
-  function fmtSeconds(s) {
-    var h = Math.floor(s / 3600);
-    var m = Math.floor((s % 3600) / 60);
-    var sec = s % 60;
-    return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+(function(){
+  function fmtSec(s){
+    return String(Math.floor(s/3600)).padStart(2,'0')+':'+
+           String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+
+           String(s%60).padStart(2,'0');
   }
-  function tick() {
-    var now = Math.floor(Date.now() / 1000);
-    document.querySelectorAll('.live-timer').forEach(function(el) {
-      var start = parseInt(el.dataset.start, 10);
-      var diff = now - start;
-      if (diff < 0) diff = 0;
-      el.textContent = fmtSeconds(diff);
+  function tick(){
+    var now=Math.floor(Date.now()/1000);
+    document.querySelectorAll('.live-timer').forEach(function(el){
+      el.textContent=fmtSec(Math.max(0,now-parseInt(el.dataset.start,10)));
     });
   }
-  tick();
-  setInterval(tick, 1000);
+  tick(); setInterval(tick,1000);
 })();
 </script>
 {% endblock %}

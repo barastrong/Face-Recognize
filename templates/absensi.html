@@ -1,108 +1,185 @@
 {% extends "base.html" %}
 {% block title %}Absensi · Face ID{% endblock %}
-{% block title_short %}<i data-lucide="clock" style="width:16px;height:16px;"></i> Absensi Karyawan{% endblock %}
+{% block title_short %}<i class="bi bi-clock me-1"></i> Absensi Karyawan{% endblock %}
 
 {% block content %}
 <style>
-  .absen-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
-  .cam-wrap { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; }
-  #video, #result-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  #result-img { display: none; z-index: 2; }
-  .cam-guide { position: absolute; inset: 0; z-index: 3; pointer-events: none; display: flex; align-items: center; justify-content: center; }
-  .cam-guide svg { opacity: .2; }
+  /* ── Scan layout ── */
+  .scan-layout { display: grid; grid-template-columns: 1fr 360px; gap: 18px; }
 
-  /* camera top bar */
-  .cam-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; min-height: 28px; }
-  .cam-label-txt { font-size: .78rem; color: var(--muted); }
-  .btn-switch { display: none; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: .78rem; cursor: pointer; transition: background .15s, color .15s; }
+  /* Camera */
+  .cam-wrap {
+    position: relative; width: 100%; aspect-ratio: 4/3;
+    background: #050608; border-radius: 12px; overflow: hidden;
+  }
+  #video, #result-img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  }
+  #result-img { display: none; z-index: 2; }
+  .cam-guide {
+    position: absolute; inset: 0; z-index: 3;
+    pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cam-guide svg { opacity: .18; }
+
+  .cam-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; min-height: 28px;
+  }
+  .cam-label-txt { font-size: .76rem; color: var(--muted); }
+  .btn-switch {
+    display: none; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: .76rem; cursor: pointer;
+    transition: background .15s, color .15s;
+  }
   .btn-switch:hover { background: rgba(255,255,255,.05); color: var(--text); }
 
-  /* HTTPS warning */
-  .cam-warning { display: none; padding: 10px 14px; border-radius: 9px; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); color: var(--amber); font-size: .81rem; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  /* Warnings / info bars */
+  .cam-warning {
+    display: none; padding: 9px 13px; border-radius: 9px;
+    background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25);
+    color: var(--amber); font-size: .8rem;
+    align-items: flex-start; gap: 8px; margin-bottom: 10px;
+  }
 
-  /* location bar */
   .loc-bar {
     display: flex; align-items: flex-start; gap: 8px;
     padding: 9px 12px; border-radius: 9px; margin-bottom: 12px;
-    background: var(--surface2); border: 1px solid var(--border);
-    font-size: .78rem; color: var(--muted); transition: border-color .3s;
+    background: var(--surface2, #1a1e32); border: 1px solid var(--border);
+    font-size: .77rem; color: var(--muted); transition: border-color .3s;
   }
-  .loc-bar.loc-ready   { border-color: rgba(99,102,241,.4); color: var(--text); }
-  .loc-bar.loc-error   { border-color: rgba(239,68,68,.3);  color: var(--red);  }
-  .loc-bar.loc-loading { border-color: var(--border); }
-  .loc-icon { flex-shrink: 0; margin-top: 1px; }
+  .loc-bar.loc-ready { border-color: rgba(108,99,255,.4); color: var(--text); }
+  .loc-bar.loc-error  { border-color: rgba(239,68,68,.3);  color: var(--red); }
+  .loc-icon { flex-shrink: 0; margin-top: 2px; }
   .loc-text { flex: 1; line-height: 1.45; word-break: break-word; }
-  .loc-spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; margin-top: 2px; }
+  .loc-spinner {
+    width: 13px; height: 13px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite;
+    flex-shrink: 0; margin-top: 2px;
+  }
 
-  /* upload fallback */
+  /* Upload fallback */
   .cam-fallback { display: none; }
   .cam-fallback.show { display: flex; flex-direction: column; gap: 10px; }
-
   .upload-area {
-    position: relative; border: 2px dashed var(--border); border-radius: 14px;
-    background: var(--surface2); cursor: pointer;
-    transition: border-color .2s, background .2s;
+    position: relative; border: 2px dashed var(--border);
+    border-radius: 13px; background: rgba(255,255,255,.02);
+    cursor: pointer; transition: border-color .2s, background .2s;
     overflow: hidden; aspect-ratio: 4/3;
     display: flex; align-items: center; justify-content: center;
   }
-  .upload-area:hover, .upload-area:focus-within { border-color: var(--accent); background: rgba(99,102,241,.05); }
+  .upload-area:hover, .upload-area:focus-within {
+    border-color: var(--accent); background: rgba(108,99,255,.05);
+  }
   .upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; padding: 20px; text-align: center; }
-  .upload-icon-wrap { width: 64px; height: 64px; border-radius: 16px; background: var(--accent-dim); border: 1px solid rgba(99,102,241,.25); display: flex; align-items: center; justify-content: center; color: var(--accent); }
-  .upload-placeholder-title { font-size: .93rem; font-weight: 600; color: var(--text); }
-  .upload-placeholder-sub { font-size: .76rem; color: var(--muted); line-height: 1.5; }
-
+  .upload-placeholder {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; pointer-events: none; padding: 20px; text-align: center;
+  }
+  .upload-icon-wrap {
+    width: 60px; height: 60px; border-radius: 15px;
+    background: var(--accent-dim); border: 1px solid rgba(108,99,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 26px;
+  }
+  .upload-ph-title { font-size: .9rem; font-weight: 600; }
+  .upload-ph-sub { font-size: .75rem; color: var(--muted); line-height: 1.5; }
   #upload-preview {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; display: none; border-radius: 12px;
+    object-fit: cover; display: none;
   }
   .preview-overlay {
     position: absolute; inset: 0; display: none;
-    align-items: flex-end; justify-content: center;
-    padding-bottom: 14px; pointer-events: none;
+    align-items: flex-end; justify-content: center; padding-bottom: 14px;
+    pointer-events: none;
     background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 60%);
   }
   .preview-overlay.show { display: flex; }
   .preview-badge {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; gap: 5px;
     background: rgba(34,197,94,.9); color: #fff;
-    font-size: .78rem; font-weight: 600; padding: 5px 14px;
-    border-radius: 99px; pointer-events: none;
+    font-size: .76rem; font-weight: 600;
+    padding: 4px 13px; border-radius: 99px;
   }
-
   .btn-change-photo {
-    width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px;
-    padding: 9px; border-radius: 10px; border: 1px solid var(--border);
-    background: transparent; color: var(--muted); font-size: .83rem;
-    cursor: pointer; transition: background .15s, color .15s; display: none;
+    display: none; width: 100%; align-items: center; justify-content: center; gap: 7px;
+    padding: 8px; border-radius: 9px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: .82rem;
+    cursor: pointer; transition: background .15s, color .15s;
   }
   .btn-change-photo.show { display: flex; }
   .btn-change-photo:hover { background: rgba(255,255,255,.04); color: var(--text); }
 
+  /* Tipe toggle */
   .tipe-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
-  .tipe-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px; border-radius: 9px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-size: .86rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .tipe-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    gap: 7px; padding: 9px; border-radius: 9px;
+    border: 1.5px solid var(--border); background: transparent;
+    color: var(--muted); font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
   .tipe-btn.active-masuk  { border-color: var(--green);  color: var(--green);  background: rgba(34,197,94,.08); }
   .tipe-btn.active-pulang { border-color: var(--amber); color: var(--amber); background: rgba(245,158,11,.08); }
 
-  #btn-scan { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px; margin-top: 14px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-size: .93rem; font-weight: 700; cursor: pointer; transition: opacity .15s; }
-  #btn-scan:hover { opacity: .88; }
+  /* Scan / reset buttons */
+  #btn-scan {
+    width: 100%; display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 13px; margin-top: 14px; border-radius: 10px;
+    border: none; background: var(--accent); color: #fff;
+    font-size: .92rem; font-weight: 700; cursor: pointer;
+    transition: opacity .15s, box-shadow .15s;
+  }
+  #btn-scan:hover { opacity: .88; box-shadow: 0 0 22px rgba(108,99,255,.35); }
   #btn-scan:disabled { opacity: .35; cursor: not-allowed; }
-  #btn-reset { width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px; margin-top: 8px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: .84rem; cursor: pointer; transition: background .15s; }
+  #btn-reset {
+    display: none; width: 100%; align-items: center; justify-content: center;
+    gap: 7px; padding: 9px; margin-top: 8px; border-radius: 10px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: .83rem; cursor: pointer;
+    transition: background .15s;
+  }
+  #btn-reset.show { display: flex; }
   #btn-reset:hover { background: rgba(255,255,255,.04); }
 
-  /* shift modal */
+  /* Status box */
+  #status-box {
+    margin-top: 15px; padding: 14px 15px; border-radius: 11px;
+    border: 1.5px solid var(--border); background: rgba(255,255,255,.02);
+    display: flex; align-items: flex-start; gap: 12px; min-height: 70px;
+    transition: border-color .3s;
+  }
+  #status-box.success { border-color: var(--green); background: rgba(34,197,94,.05); }
+  #status-box.error   { border-color: var(--red);   background: rgba(239,68,68,.05); }
+  #status-box.warning { border-color: var(--amber);  background: rgba(245,158,11,.05); }
+  .status-icon { display: flex; flex-shrink: 0; margin-top: 2px; }
+  .status-nama { font-size: .95rem; font-weight: 700; }
+  .status-msg  { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+  .status-loc  { font-size: .73rem; color: var(--muted); margin-top: 4px; display: flex; align-items: flex-start; gap: 4px; }
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2.5px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Shift modal */
   .shift-modal-backdrop {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.65); z-index: 400;
+    background: rgba(0,0,0,.7); z-index: 1050;
     align-items: center; justify-content: center; padding: 16px;
   }
   .shift-modal-backdrop.show { display: flex; }
   .shift-modal {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px; width: 100%; max-width: 400px;
+    border-radius: 16px; padding: 24px; width: 100%; max-width: 410px;
   }
-  .shift-modal-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-  .shift-modal-sub   { font-size: .8rem; color: var(--muted); margin-bottom: 18px; }
+  .shift-modal-title { font-weight: 700; font-size: .98rem; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+  .shift-modal-sub { font-size: .8rem; color: var(--muted); margin-bottom: 18px; }
   .shift-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
   .shift-opt {
     display: flex; align-items: center; gap: 12px;
@@ -110,135 +187,86 @@
     border: 1.5px solid var(--border); cursor: pointer;
     transition: border-color .15s, background .15s;
   }
-  .shift-opt:hover  { border-color: var(--accent); background: var(--accent-dim); }
+  .shift-opt:hover { border-color: var(--accent); background: var(--accent-dim); }
   .shift-opt.active { border-color: var(--accent); background: var(--accent-dim); }
-  .shift-opt-name  { font-weight: 600; font-size: .9rem; }
-  .shift-opt-time  { font-size: .76rem; color: var(--muted); margin-top: 2px; }
-  .shift-modal-footer { display: flex; gap: 8px; justify-content: flex-end; }
+  .shift-opt-name { font-weight: 600; font-size: .88rem; }
+  .shift-opt-time { font-size: .74rem; color: var(--muted); margin-top: 2px; }
 
-  #status-box { margin-top: 16px; padding: 14px 16px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface2); display: flex; align-items: flex-start; gap: 12px; min-height: 72px; transition: border-color .3s; }
-  #status-box.success { border-color: var(--green); }
-  #status-box.error   { border-color: var(--red); }
-  #status-box.warning { border-color: var(--amber); }
-  .status-icon { display: flex; flex-shrink: 0; margin-top: 2px; }
-  .status-nama { font-size: .97rem; font-weight: 700; }
-  .status-msg  { font-size: .79rem; color: var(--muted); margin-top: 3px; }
-  .status-loc  { font-size: .75rem; color: var(--muted); margin-top: 4px; display: flex; align-items: flex-start; gap: 5px; }
-  .status-loc i { flex-shrink: 0; margin-top: 1px; opacity: .6; }
-  .spinner { width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Right panel */
+  .stats-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .stat-pill {
+    flex: 1; text-align: center; padding: 12px 8px;
+    border-radius: 10px; background: rgba(255,255,255,.03);
+    border: 1px solid var(--border);
+  }
+  .stat-num { font-size: 1.35rem; font-weight: 700; line-height: 1.1; }
+  .stat-lbl { font-size: .68rem; color: var(--muted); margin-top: 3px; }
 
   .absen-list { max-height: 420px; overflow-y: auto; }
-  .absen-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; margin-bottom: 5px; background: var(--surface2); border: 1px solid var(--border); }
-  .absen-nama  { font-size: .86rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .absen-waktu { font-size: .76rem; color: var(--muted); flex-shrink: 0; }
-
-  .stats { display: flex; gap: 10px; margin-bottom: 16px; }
-  .stat-pill { flex: 1; text-align: center; padding: 10px 8px; border-radius: 9px; background: var(--surface2); border: 1px solid var(--border); }
-  .stat-num { font-size: 1.3rem; font-weight: 700; }
-  .stat-lbl { font-size: .69rem; color: var(--muted); margin-top: 2px; }
+  .absen-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 11px; border-radius: 9px; margin-bottom: 5px;
+    background: rgba(255,255,255,.025); border: 1px solid var(--border);
+  }
+  .absen-nama  { font-size: .85rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .absen-waktu { font-size: .75rem; color: var(--muted); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
   .page-clock { text-align: right; flex-shrink: 0; }
-  #clock { font-size: 1.4rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
-  #tanggal-sub { font-size: .8rem; color: var(--muted); margin-top: 1px; }
+  #clock { font-size: 1.5rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  #date-sub { font-size: .78rem; color: var(--muted); margin-top: 1px; }
 
-  /* ── Responsive ───────────────────────────────────────────── */
+  /* Responsive */
   @media (max-width: 900px) {
-    .absen-layout { grid-template-columns: 1fr; gap: 14px; }
-    .absen-list { max-height: 300px; }
+    .scan-layout { grid-template-columns: 1fr; }
+    .absen-list { max-height: 280px; }
   }
-
-  @media (max-width: 640px) {
-    .page-header { flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 576px) {
     .page-clock { text-align: left; width: 100%; }
-    .stats { gap: 8px; }
-    .stat-pill { padding: 9px 6px; }
-  }
-
-  @media (max-width: 480px) {
-    #clock { font-size: 1.1rem; }
-    #tanggal-sub { font-size: .72rem; }
-    .page-clock { text-align: left; }
-
-    .tipe-toggle { gap: 6px; margin-bottom: 12px; }
-    .tipe-btn { font-size: .8rem; padding: 8px 6px; gap: 5px; }
-
-    .cam-topbar { flex-wrap: wrap; gap: 6px; min-height: auto; }
-    .cam-label-txt { font-size: .73rem; }
-    .btn-switch { padding: 4px 9px; font-size: .73rem; }
-
-    .loc-bar { padding: 8px 10px; font-size: .73rem; }
-
-    .cam-warning { font-size: .76rem; padding: 9px 11px; }
-
-    .upload-placeholder-title { font-size: .86rem; }
-    .upload-placeholder-sub { font-size: .72rem; }
-    .upload-icon-wrap { width: 54px; height: 54px; }
-
-    #btn-scan { font-size: .87rem; padding: 12px; gap: 6px; margin-top: 12px; }
-    #btn-reset { font-size: .8rem; padding: 8px; }
-
-    #status-box { padding: 11px 12px; gap: 9px; }
-    .status-nama { font-size: .9rem; }
-    .status-msg { font-size: .75rem; }
-    .status-icon i { width: 24px !important; height: 24px !important; }
-
-    .stat-num { font-size: 1.1rem; }
-    .stat-lbl { font-size: .65rem; }
-
-    .absen-item { padding: 8px 10px; gap: 8px; }
-    .absen-nama { font-size: .8rem; }
-    .absen-waktu { font-size: .71rem; }
-  }
-
-  @media (max-width: 360px) {
-    .tipe-btn { font-size: .76rem; padding: 7px 4px; }
-    .cam-warning span { font-size: .74rem; }
+    #clock { font-size: 1.2rem; }
+    .tipe-btn { font-size: .78rem; padding: 8px 5px; gap: 5px; }
+    #btn-scan { font-size: .86rem; padding: 11px; }
   }
 </style>
 
 <div class="page-header">
-  <div class="page-header-left">
-    <h1><i data-lucide="clock" style="width:20px;height:20px;"></i> Absensi Karyawan</h1>
-    <div class="page-sub" id="tanggal-sub"></div>
+  <div>
+    <h1><i class="bi bi-clock" style="color:var(--accent);"></i> Absensi Karyawan</h1>
+    <div class="page-sub" id="date-sub"></div>
   </div>
   <div class="page-clock"><div id="clock"></div></div>
 </div>
 
-<div class="absen-layout">
+<div class="scan-layout">
 
-  <!-- Kiri: kamera -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><i data-lucide="camera" style="width:16px;height:16px;"></i> Scan Wajah</div>
+  <!-- Left: Camera card -->
+  <div class="card p-3">
+    <div class="card-header-custom">
+      <span class="card-title-text"><i class="bi bi-camera"></i> Scan Wajah</span>
     </div>
 
     <div class="tipe-toggle">
       <button class="tipe-btn active-masuk" id="btn-masuk" onclick="setTipe('masuk')">
-        <i data-lucide="log-in" style="width:15px;height:15px;"></i> Masuk
+        <i class="bi bi-box-arrow-in-right"></i> Masuk
       </button>
       <button class="tipe-btn" id="btn-pulang" onclick="setTipe('pulang')">
-        <i data-lucide="log-out" style="width:15px;height:15px;"></i> Pulang
+        <i class="bi bi-box-arrow-right"></i> Pulang
       </button>
     </div>
 
-    <!-- Warning HTTPS -->
     <div class="cam-warning" id="cam-warning">
-      <i data-lucide="alert-triangle" style="width:15px;height:15px;flex-shrink:0;margin-top:1px;"></i>
+      <i class="bi bi-exclamation-triangle-fill" style="flex-shrink:0;font-size:14px;margin-top:1px;"></i>
       <span>Kamera butuh <strong>HTTPS</strong>. Gunakan upload foto di bawah.</span>
     </div>
 
-    <!-- Location bar -->
     <div class="loc-bar loc-loading" id="loc-bar">
       <div class="loc-spinner" id="loc-spinner"></div>
       <span class="loc-text" id="loc-text">Mendapatkan lokasi…</span>
     </div>
 
-    <!-- Topbar kamera: label + tombol switch -->
     <div class="cam-topbar">
       <span class="cam-label-txt" id="cam-label">Menginisialisasi kamera…</span>
       <button class="btn-switch" id="btn-switch" onclick="switchCamera()">
-        <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> Balik Kamera
+        <i class="bi bi-arrow-repeat"></i> Balik Kamera
       </button>
     </div>
 
@@ -256,38 +284,34 @@
       </div>
     </div>
 
-    <!-- Fallback: upload foto -->
+    <!-- Upload fallback -->
     <div class="cam-fallback" id="cam-fallback">
       <label class="upload-area" for="upload-input">
         <input type="file" id="upload-input" accept="image/*" capture="user" onchange="onUploadChange(this)">
         <div class="upload-placeholder" id="upload-placeholder">
-          <div class="upload-icon-wrap">
-            <i data-lucide="camera" style="width:28px;height:28px;"></i>
-          </div>
-          <div class="upload-placeholder-title">Ambil atau pilih foto</div>
-          <div class="upload-placeholder-sub">Tap untuk buka kamera<br>atau pilih dari galeri</div>
+          <div class="upload-icon-wrap"><i class="bi bi-camera"></i></div>
+          <div class="upload-ph-title">Ambil atau pilih foto</div>
+          <div class="upload-ph-sub">Tap untuk buka kamera<br>atau pilih dari galeri</div>
         </div>
         <img id="upload-preview" alt="Preview"/>
         <div class="preview-overlay" id="preview-overlay">
-          <span class="preview-badge">
-            <i data-lucide="check" style="width:13px;height:13px;"></i> Foto dipilih
-          </span>
+          <span class="preview-badge"><i class="bi bi-check-lg"></i> Foto dipilih</span>
         </div>
       </label>
       <button class="btn-change-photo" id="btn-change-photo" onclick="triggerUpload()">
-        <i data-lucide="image" style="width:14px;height:14px;"></i> Ganti Foto
+        <i class="bi bi-image"></i> Ganti Foto
       </button>
     </div>
 
     <button id="btn-scan" onclick="doScan()">
-      <i data-lucide="scan-face" style="width:17px;height:17px;"></i> Scan Sekarang
+      <i class="bi bi-person-bounding-box" style="font-size:17px;"></i> Scan Sekarang
     </button>
-    <button id="btn-reset" onclick="resetScan()" style="display:none;">
-      <i data-lucide="rotate-ccw" style="width:15px;height:15px;"></i> Scan Ulang
+    <button id="btn-reset" onclick="resetScan()">
+      <i class="bi bi-arrow-counterclockwise"></i> Scan Ulang
     </button>
 
     <div id="status-box">
-      <span class="status-icon"><i data-lucide="user" style="width:28px;height:28px;color:var(--muted)"></i></span>
+      <span class="status-icon"><i class="bi bi-person-circle" style="font-size:28px;color:var(--muted);"></i></span>
       <div>
         <div class="status-nama">Siap melakukan absensi</div>
         <div class="status-msg">Hadap kamera lalu tekan Scan</div>
@@ -296,40 +320,40 @@
     <canvas id="canvas" style="display:none"></canvas>
   </div>
 
-  <!-- Modal Pilih Shift -->
+  <!-- Shift modal -->
   <div class="shift-modal-backdrop" id="shift-modal">
     <div class="shift-modal">
-      <div class="shift-modal-title"><i data-lucide="clock-4" style="width:18px;height:18px;color:var(--accent);"></i> Pilih Shift</div>
+      <div class="shift-modal-title">
+        <i class="bi bi-alarm" style="color:var(--accent);"></i> Pilih Shift
+      </div>
       <div class="shift-modal-sub" id="shift-modal-sub">Pilih shift untuk absensi hari ini</div>
       <div class="shift-list" id="shift-list">
         {% for s in shifts %}
         <div class="shift-opt" data-id="{{ s.id }}" onclick="selectShift(this)">
           <div>
             <div class="shift-opt-name">{{ s.nama_shift }}</div>
-            <div class="shift-opt-time">{{ s.jam_masuk }} &ndash; {{ s.jam_pulang }}
-              {% if s.keterangan %} &middot; {{ s.keterangan }}{% endif %}
-            </div>
+            <div class="shift-opt-time">{{ s.jam_masuk }} – {{ s.jam_pulang }}{% if s.keterangan %} · {{ s.keterangan }}{% endif %}</div>
           </div>
         </div>
         {% else %}
-        <div style="color:var(--muted);font-size:.85rem;text-align:center;padding:16px;">Belum ada shift tersedia</div>
+        <div style="color:var(--muted);font-size:.84rem;text-align:center;padding:16px;">Belum ada shift tersedia</div>
         {% endfor %}
       </div>
-      <div class="shift-modal-footer">
-        <button class="btn btn-outline" onclick="cancelShift()">Batal</button>
-        <button class="btn btn-primary" id="btn-confirm-shift" disabled onclick="confirmShift()">
-          <i data-lucide="check" style="width:14px;height:14px;"></i> Konfirmasi
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn-ghost btn-sm-icon" onclick="cancelShift()">Batal</button>
+        <button class="btn-accent btn-sm-icon" id="btn-confirm-shift" disabled onclick="confirmShift()">
+          <i class="bi bi-check-lg"></i> Konfirmasi
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Kanan: list absensi -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title"><i data-lucide="list-checks" style="width:16px;height:16px;"></i> Absensi Hari Ini</div>
+  <!-- Right: absensi list -->
+  <div class="card p-3">
+    <div class="card-header-custom">
+      <span class="card-title-text"><i class="bi bi-list-check"></i> Absensi Hari Ini</span>
     </div>
-    <div class="stats">
+    <div class="stats-row">
       <div class="stat-pill">
         <div class="stat-num c-green" id="n-masuk">{{ absensi|selectattr('tipe','eq','masuk')|list|length }}</div>
         <div class="stat-lbl">Masuk</div>
@@ -343,13 +367,13 @@
       {% if absensi %}
         {% for a in absensi|reverse %}
         <div class="absen-item">
-          <span class="badge badge-{{ a.tipe }}">{{ a.tipe|upper }}</span>
+          <span class="status-badge {% if a.tipe == 'masuk' %}badge-masuk{% else %}badge-pulang{% endif %}">{{ a.tipe|upper }}</span>
           <span class="absen-nama">{{ a.nama }}</span>
           <span class="absen-waktu">{{ a.waktu[11:16] }}</span>
         </div>
         {% endfor %}
       {% else %}
-        <div style="text-align:center;color:var(--muted);padding:32px 0;font-size:.85rem;">
+        <div style="text-align:center;color:var(--muted);padding:32px 0;font-size:.84rem;">
           Belum ada absensi hari ini
         </div>
       {% endif %}
@@ -357,373 +381,204 @@
   </div>
 </div>
 
+{% endblock %}
+{% block scripts %}
 <script>
-  // ── Clock ──────────────────────────────────────────────────────
   let tipe = "masuk";
-  let _pendingImage = null;
-  let _pendingLoc   = null;
-  let _selectedShiftId = null;
+  let _pendingImage = null, _pendingLoc = null, _selectedShiftId = null, _pendingFaceData = null;
+  let uploadedDataUrl = null, stream = null, currentFacing = "user";
+  let currentLocation = null;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const HARI  = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
   const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
   function updateClock() {
     const now = new Date();
     document.getElementById("clock").textContent = now.toTimeString().slice(0,8);
-    document.getElementById("tanggal-sub").textContent =
+    document.getElementById("date-sub").textContent =
       HARI[now.getDay()] + ", " + now.getDate() + " " + BULAN[now.getMonth()] + " " + now.getFullYear();
   }
   updateClock(); setInterval(updateClock, 1000);
 
-  // ── Location ───────────────────────────────────────────────────
-  // currentLocation: null  = belum dapat
-  //                  false = gagal / ditolak
-  //                  string = alamat siap pakai
-  let currentLocation = null;
-
+  /* Location */
   function setLocBar(state, text) {
-    const bar      = document.getElementById("loc-bar");
-    const locText  = document.getElementById("loc-text");
-    const spinner  = document.getElementById("loc-spinner");
-    bar.className  = "loc-bar " + state;          // loc-loading | loc-ready | loc-error
-    locText.textContent = text;
-    spinner.style.display = (state === "loc-loading") ? "block" : "none";
-
-    if (state !== "loc-loading") {
-      // Ganti spinner dengan ikon
-      const iconName = state === "loc-ready" ? "map-pin" : "map-pin-off";
-      bar.innerHTML =
-        `<span class="loc-icon"><i data-lucide="${iconName}" style="width:14px;height:14px;"></i></span>` +
-        `<span class="loc-text">${text}</span>`;
-      lucide.createIcons();
+    const bar = document.getElementById("loc-bar");
+    const sp  = document.getElementById("loc-spinner");
+    bar.className = "loc-bar " + state;
+    if (state === "loc-loading") {
+      bar.innerHTML = `<div class="loc-spinner" id="loc-spinner"></div><span class="loc-text">${text}</span>`;
+    } else {
+      const icon = state === "loc-ready" ? "bi-geo-alt-fill" : "bi-geo-alt";
+      bar.innerHTML = `<span class="loc-icon"><i class="bi ${icon}" style="font-size:14px;"></i></span><span class="loc-text">${escHtml(text)}</span>`;
     }
   }
 
   async function reverseGeocode(lat, lon) {
     try {
-      const resp = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-        {
-          headers: { "Accept-Language": "id", "User-Agent": "AbsensiApp/1.0" },
-          signal: AbortSignal.timeout(8000),
-        }
-      );
-      if (!resp.ok) throw new Error("HTTP " + resp.status);
-      const data = await resp.json();
-      const a = data.address || {};
-
-      // ── Bagian 1: Nama jalan ───────────────────────────────────
-      const roadRaw = a.road || a.pedestrian || a.footway ||
-                      a.path || a.cycleway   || a.street  || "";
-      const nomorRumah = a.house_number || "";
-      let bagianJalan = roadRaw;
-      if (bagianJalan && !/^(jl\.?|jalan|gg\.?|gang)\s/i.test(bagianJalan)) {
-        bagianJalan = "Jl. " + bagianJalan;
-      }
-      if (nomorRumah && bagianJalan && !bagianJalan.includes(nomorRumah)) {
-        bagianJalan = `${bagianJalan} No.${nomorRumah}`;
-      }
-      // Fallback ke municipality jika road kosong
-      if (!bagianJalan && a.municipality) {
-        bagianJalan = "Jl. " + a.municipality;
-      }
-
-      // ── Bagian 2: Kelurahan / desa ─────────────────────────────
-      const kelurahan =
-        a.suburb      || a.quarter       || a.neighbourhood ||
-        a.village     || a.hamlet        || a.locality      || "";
-
-      // ── Bagian 3: Kecamatan ────────────────────────────────────
-      // city_district, district, subdistrict, atau fallback municipality
-      const rawKec =
-        a.city_district || a.district || a.subdistrict || a.municipality || "";
-      let kecamatan = rawKec
-        ? (rawKec.toLowerCase().startsWith("kec") ? rawKec : "Kec. " + rawKec)
-        : "";
-      // Fallback: cari pola "Kecamatan X" di display_name
-      if (!kecamatan && data.display_name) {
-        const m = data.display_name.match(/Kecamatan\s+([^,]+)/i);
-        if (m) kecamatan = "Kec. " + m[1].trim();
-      }
-
-      // ── Bagian 4: Kabupaten / Kota ─────────────────────────────
-      // Data real: county = "Sidoarjo" (tanpa prefix), city = "Kota Surabaya"
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+        { headers:{"Accept-Language":"id","User-Agent":"AbsensiApp/1.0"}, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const d = await r.json(); const a = d.address || {};
+      const roadRaw = a.road || a.pedestrian || a.footway || a.path || "";
+      let jalan = roadRaw;
+      if (jalan && !/^(jl\.?|jalan|gg\.?|gang)\s/i.test(jalan)) jalan = "Jl. " + jalan;
+      if (a.house_number && jalan) jalan += " No." + a.house_number;
+      if (!jalan && a.municipality) jalan = "Jl. " + a.municipality;
+      const kel = a.suburb || a.quarter || a.neighbourhood || a.village || "";
+      const rawKec = a.city_district || a.district || a.municipality || "";
+      const kec = rawKec ? (rawKec.toLowerCase().startsWith("kec") ? rawKec : "Kec. " + rawKec) : "";
       let kabkota = "";
-      if (a.county) {
-        const c = a.county;
-        kabkota = /^(kabupaten|kota)/i.test(c) ? c : "Kabupaten " + c;
-      } else if (a.city) {
-        const c = a.city;
-        kabkota = /^(kabupaten|kota)/i.test(c) ? c : "Kota " + c;
-      } else if (a.town) {
-        kabkota = /^(kabupaten|kota)/i.test(a.town) ? a.town : "Kota " + a.town;
-      }
-
-      // ── Bagian 5: Provinsi ─────────────────────────────────────
-      const provinsi = a.state || "";
-
-      // ── Bagian 6: Kode pos ─────────────────────────────────────
-      const kodepos = a.postcode || "";
-
-      // ── Gabungkan semua bagian yang ada ───────────────────────
-      // Format: "Jl. X No.Y, Kelurahan, Kec. Z, Kabupaten A, Provinsi B 12345"
-      const parts = [bagianJalan, kelurahan, kecamatan, kabkota, provinsi, kodepos]
-        .map(s => (s || "").trim()).filter(Boolean);
-
-      currentLocation = parts.length > 0
-        ? parts.join(", ")
-        : (data.display_name || `${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+      if (a.county) kabkota = /^(kabupaten|kota)/i.test(a.county) ? a.county : "Kabupaten " + a.county;
+      else if (a.city) kabkota = /^(kabupaten|kota)/i.test(a.city) ? a.city : "Kota " + a.city;
+      const parts = [jalan, kel, kec, kabkota, a.state, a.postcode].map(s=>(s||"").trim()).filter(Boolean);
+      currentLocation = parts.length ? parts.join(", ") : (d.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`);
       setLocBar("loc-ready", currentLocation);
-    } catch (err) {
-      // Nominatim gagal → fallback koordinat mentah
-      currentLocation = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+    } catch {
+      currentLocation = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
       setLocBar("loc-ready", "Koordinat: " + currentLocation);
     }
   }
 
   function startLocation() {
-    if (!navigator.geolocation) {
-      currentLocation = false;
-      setLocBar("loc-error", "Geolocation tidak didukung browser ini");
-      return;
-    }
-    setLocBar("loc-loading", "Mendapatkan lokasi…");
+    if (!navigator.geolocation) { currentLocation = false; setLocBar("loc-error","Geolocation tidak didukung"); return; }
+    setLocBar("loc-loading","Mendapatkan lokasi…");
     navigator.geolocation.getCurrentPosition(
-      pos => reverseGeocode(pos.coords.latitude, pos.coords.longitude),
-      err => {
+      p => reverseGeocode(p.coords.latitude, p.coords.longitude),
+      e => {
         currentLocation = false;
-        const msgs = {
-          1: "Izin lokasi ditolak",
-          2: "Lokasi tidak dapat ditentukan",
-          3: "Timeout mendapatkan lokasi",
-        };
-        setLocBar("loc-error", (msgs[err.code] || "Gagal mendapatkan lokasi") + " — absensi tetap bisa dilakukan");
+        const msgs = {1:"Izin lokasi ditolak",2:"Lokasi tidak dapat ditentukan",3:"Timeout mendapatkan lokasi"};
+        setLocBar("loc-error", (msgs[e.code]||"Gagal mendapatkan lokasi") + " — absensi tetap bisa dilakukan");
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
   }
-
-  // Minta lokasi saat halaman load
   startLocation();
 
-  // ── Camera ─────────────────────────────────────────────────────
-  let stream = null;
-  let currentFacing = "user";
-  let uploadedDataUrl = null;
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
+  /* Camera */
   async function startCamera(facing) {
     if (stream) stream.getTracks().forEach(t => t.stop());
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width:{ideal:1280}, height:{ideal:720} } });
       const vid = document.getElementById("video");
-      vid.srcObject = stream;
-      try { await vid.play(); } catch(_) {}
+      vid.srcObject = stream; try { await vid.play(); } catch(_){}
       currentFacing = facing;
-      document.getElementById("cam-label").textContent =
-        facing === "user" ? "Kamera depan aktif" : "Kamera belakang aktif";
+      document.getElementById("cam-label").textContent = facing === "user" ? "Kamera depan aktif" : "Kamera belakang aktif";
       if (isMobile) document.getElementById("btn-switch").style.display = "inline-flex";
-    } catch (err) {
-      showFallback(err);
-    }
+    } catch(err) { showFallback(err); }
   }
 
   function showFallback(err) {
     const needsHttps = location.protocol !== "https:" && location.hostname !== "localhost";
-    if (needsHttps) {
-      const w = document.getElementById("cam-warning");
-      w.style.display = "flex";
-    }
+    if (needsHttps) document.getElementById("cam-warning").style.display = "flex";
     document.getElementById("cam-wrap").style.display = "none";
     document.getElementById("cam-fallback").classList.add("show");
     document.getElementById("cam-label").textContent = "Mode upload foto";
-    document.getElementById("btn-scan").innerHTML =
-      '<i data-lucide="upload" style="width:17px;height:17px;"></i> Scan Foto';
-    lucide.createIcons();
-    setStatus("warning", "alert-triangle", "Kamera tidak tersedia",
-      needsHttps ? "Gunakan HTTPS atau pilih foto" : "Izin kamera ditolak – pilih foto");
+    document.getElementById("btn-scan").innerHTML = '<i class="bi bi-upload" style="font-size:17px;"></i> Scan Foto';
+    setStatus("warning","bi-exclamation-triangle","Kamera tidak tersedia", needsHttps ? "Gunakan HTTPS atau pilih foto" : "Izin kamera ditolak – pilih foto");
   }
 
-  function switchCamera() {
-    startCamera(currentFacing === "user" ? "environment" : "user");
-  }
+  function switchCamera() { startCamera(currentFacing === "user" ? "environment" : "user"); }
 
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    startCamera("user");
-  } else {
-    showFallback(new Error("not supported"));
-  }
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) startCamera("user");
+  else showFallback(new Error("not supported"));
 
-  // ── Upload fallback ────────────────────────────────────────────
+  /* Upload */
   function onUploadChange(input) {
-    const file = input.files[0];
-    if (!file) return;
+    const file = input.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = e => {
       uploadedDataUrl = e.target.result;
       const prev = document.getElementById("upload-preview");
-      prev.src = uploadedDataUrl;
-      prev.style.display = "block";
+      prev.src = uploadedDataUrl; prev.style.display = "block";
       document.getElementById("upload-placeholder").style.display = "none";
       document.getElementById("preview-overlay").classList.add("show");
       document.getElementById("btn-change-photo").classList.add("show");
-      setStatus("idle", "image", "Foto siap discan", "Tekan tombol Scan di bawah");
-      lucide.createIcons();
+      setStatus("idle","bi-image","Foto siap discan","Tekan tombol Scan di bawah");
     };
     reader.readAsDataURL(file);
   }
+  function triggerUpload() { document.getElementById("upload-input").click(); }
 
-  function triggerUpload() {
-    document.getElementById("upload-input").click();
-  }
-
-  // ── Capture ────────────────────────────────────────────────────
   function captureFrame() {
     if (uploadedDataUrl) return uploadedDataUrl;
-    const v = document.getElementById("video");
-    const c = document.getElementById("canvas");
-    c.width  = v.videoWidth  || 640;
-    c.height = v.videoHeight || 480;
+    const v = document.getElementById("video"), c = document.getElementById("canvas");
+    c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
     const ctx = c.getContext("2d");
-    if (currentFacing === "user") {
-      ctx.translate(c.width, 0);
-      ctx.scale(-1, 1);
-    }
+    if (currentFacing === "user") { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
     ctx.drawImage(v, 0, 0);
     return c.toDataURL("image/jpeg", 0.9);
   }
 
-  // ── Tipe toggle ────────────────────────────────────────────────
+  /* Tipe toggle */
   function setTipe(t) {
     tipe = t;
-    document.getElementById("btn-masuk").className  = "tipe-btn" + (t === "masuk"  ? " active-masuk"  : "");
-    document.getElementById("btn-pulang").className = "tipe-btn" + (t === "pulang" ? " active-pulang" : "");
+    document.getElementById("btn-masuk").className  = "tipe-btn" + (t==="masuk"  ? " active-masuk"  : "");
+    document.getElementById("btn-pulang").className = "tipe-btn" + (t==="pulang" ? " active-pulang" : "");
   }
 
-  // ── Scan ───────────────────────────────────────────────────────
+  /* Scan */
   async function doScan() {
     if (document.getElementById("cam-fallback").classList.contains("show") && !uploadedDataUrl) {
-      setStatus("error", "image", "Belum ada foto", "Pilih foto terlebih dahulu");
-      return;
+      setStatus("error","bi-exclamation-circle","Belum ada foto","Pilih foto terlebih dahulu"); return;
     }
     document.getElementById("btn-scan").disabled = true;
-    setStatus("loading", null, "Memproses wajah...", "Harap tunggu");
-
+    setStatus("loading",null,"Memproses wajah…","Harap tunggu");
     const b64 = captureFrame();
-
     let loc = currentLocation;
     if (loc === null) {
-      await new Promise(resolve => {
-        let waited = 0;
-        const iv = setInterval(() => {
-          waited += 200;
-          if (currentLocation !== null || waited >= 3000) { clearInterval(iv); resolve(); }
-        }, 200);
-      });
+      await new Promise(res => { let w=0; const iv=setInterval(()=>{ w+=200; if(currentLocation!==null||w>=3000){clearInterval(iv);res();} },200); });
       loc = currentLocation;
     }
-    const locationPayload = loc || null;
-
-    // Untuk tipe masuk: deteksi dulu, jika dikenali → tampilkan modal shift
-    // Untuk tipe pulang: langsung submit
+    const locPayload = loc || null;
     if (tipe === "masuk") {
-      // Simpan sementara
-      _pendingImage = b64;
-      _pendingLoc   = locationPayload;
-
-      // Validasi wajah dulu (preview only, belum catat)
+      _pendingImage = b64; _pendingLoc = locPayload;
       try {
-        const resp = await fetch("/api/absen", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: b64, tipe: "__preview__", location: locationPayload })
-        });
+        const resp = await fetch("/api/absen", { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({image:b64, tipe:"__preview__", location:locPayload}) });
         const data = await resp.json();
-        if (data.face_image) {
-          document.getElementById("result-img").src = data.face_image;
-          document.getElementById("result-img").style.display = "block";
-          document.getElementById("video").style.display = "none";
-        }
+        if (data.face_image) { document.getElementById("result-img").src=data.face_image; document.getElementById("result-img").style.display="block"; document.getElementById("video").style.display="none"; }
         if (data.recognized) {
-          // Tampilkan modal pilih shift
-          document.getElementById("shift-modal-sub").textContent =
-            "Halo " + data.nama + "! Pilih shift untuk absensi masuk hari ini.";
-          _selectedShiftId = null;
+          document.getElementById("shift-modal-sub").textContent = "Halo " + data.nama + "! Pilih shift untuk absensi masuk hari ini.";
+          _selectedShiftId = null; _pendingFaceData = data;
           document.querySelectorAll(".shift-opt").forEach(el => el.classList.remove("active"));
           document.getElementById("btn-confirm-shift").disabled = true;
           document.getElementById("shift-modal").classList.add("show");
-          lucide.createIcons();
-          // Simpan data wajah untuk dipakai saat konfirmasi
-          _pendingFaceData = data;
         } else {
-          setStatus("error", "x-circle", "Wajah tidak dikenali", data.absen_result?.msg || "Coba lagi");
-          document.getElementById("btn-reset").style.display = "flex";
+          setStatus("error","bi-x-circle","Wajah tidak dikenali", data.absen_result?.msg || "Coba lagi");
+          document.getElementById("btn-reset").classList.add("show");
           document.getElementById("btn-scan").disabled = false;
         }
-      } catch(e) {
-        setStatus("error", "wifi-off", "Gagal terhubung", "Server tidak merespons");
-        document.getElementById("btn-scan").disabled = false;
-      }
-    } else {
-      // Pulang: langsung submit
-      await submitAbsen(b64, locationPayload, null);
-    }
+      } catch { setStatus("error","bi-wifi-off","Gagal terhubung","Server tidak merespons"); document.getElementById("btn-scan").disabled = false; }
+    } else { await submitAbsen(b64, locPayload, null); }
   }
-
-  let _pendingFaceData = null;
 
   function selectShift(el) {
     document.querySelectorAll(".shift-opt").forEach(e => e.classList.remove("active"));
-    el.classList.add("active");
-    _selectedShiftId = el.dataset.id;
+    el.classList.add("active"); _selectedShiftId = el.dataset.id;
     document.getElementById("btn-confirm-shift").disabled = false;
   }
-
   function cancelShift() {
     document.getElementById("shift-modal").classList.remove("show");
-    document.getElementById("btn-scan").disabled = false;
-    resetScan();
+    document.getElementById("btn-scan").disabled = false; resetScan();
   }
-
   async function confirmShift() {
     document.getElementById("shift-modal").classList.remove("show");
     await submitAbsen(_pendingImage, _pendingLoc, _selectedShiftId);
   }
 
-  async function submitAbsen(b64, locationPayload, shiftId) {
+  async function submitAbsen(b64, locPayload, shiftId) {
     try {
-      const resp = await fetch("/api/absen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: b64, tipe, location: locationPayload, shift_id: shiftId })
-      });
+      const resp = await fetch("/api/absen", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({image:b64, tipe, location:locPayload, shift_id:shiftId}) });
       const data = await resp.json();
-
-      if (data.face_image) {
-        document.getElementById("result-img").src = data.face_image;
-        document.getElementById("result-img").style.display = "block";
-        document.getElementById("video").style.display = "none";
-      }
-
+      if (data.face_image) { document.getElementById("result-img").src=data.face_image; document.getElementById("result-img").style.display="block"; document.getElementById("video").style.display="none"; }
       if (data.recognized) {
         const ar = data.absen_result;
-        setStatus(
-          ar.success ? "success" : "warning",
-          ar.success ? "check-circle" : "alert-triangle",
-          data.nama, ar.msg,
-          "Confidence: " + (data.confidence * 100).toFixed(1) + "%",
-          locationPayload
-        );
+        setStatus(ar.success?"success":"warning", ar.success?"bi-check-circle":"bi-exclamation-triangle", data.nama, ar.msg, "Confidence: "+(data.confidence*100).toFixed(1)+"%", locPayload);
         if (ar.success) refreshList();
-      } else {
-        setStatus("error", "x-circle", "Wajah tidak dikenali", data.absen_result?.msg || "Coba lagi");
-      }
-      document.getElementById("btn-reset").style.display = "flex";
-    } catch(e) {
-      setStatus("error", "wifi-off", "Gagal terhubung", "Server tidak merespons");
-      document.getElementById("btn-scan").disabled = false;
-    }
+      } else { setStatus("error","bi-x-circle","Wajah tidak dikenali", data.absen_result?.msg||"Coba lagi"); }
+      document.getElementById("btn-reset").classList.add("show");
+    } catch { setStatus("error","bi-wifi-off","Gagal terhubung","Server tidak merespons"); document.getElementById("btn-scan").disabled = false; }
   }
 
   function resetScan() {
@@ -731,64 +586,46 @@
     document.getElementById("video").style.display = "block";
     document.getElementById("result-img").style.display = "none";
     document.getElementById("btn-scan").disabled = false;
-    document.getElementById("btn-reset").style.display = "none";
-    const prev = document.getElementById("upload-preview");
-    if (prev) { prev.style.display = "none"; prev.src = ""; }
-    const inp = document.getElementById("upload-input");
-    if (inp) inp.value = "";
+    document.getElementById("btn-reset").classList.remove("show");
+    const prev = document.getElementById("upload-preview"); if(prev){prev.style.display="none";prev.src="";}
+    const inp  = document.getElementById("upload-input");   if(inp) inp.value="";
     document.getElementById("upload-placeholder").style.display = "flex";
     document.getElementById("preview-overlay").classList.remove("show");
     document.getElementById("btn-change-photo").classList.remove("show");
-    const isFallback = document.getElementById("cam-fallback").classList.contains("show");
-    setStatus("idle", "user", "Siap melakukan absensi",
-      isFallback ? "Pilih foto lalu tekan Scan" : "Hadap kamera lalu tekan Scan");
+    const isFall = document.getElementById("cam-fallback").classList.contains("show");
+    setStatus("idle","bi-person-circle","Siap melakukan absensi", isFall?"Pilih foto lalu tekan Scan":"Hadap kamera lalu tekan Scan");
   }
 
-  // ── Status box ─────────────────────────────────────────────────
-  // location param: opsional, ditampilkan di bawah pesan jika ada
-  function setStatus(type, iconName, nama, msg, conf, location) {
-    const box   = document.getElementById("status-box");
-    box.className = "status-box " + (type === "idle" ? "" : type);
-    const color = { success: "var(--green)", error: "var(--red)", warning: "var(--amber)" }[type] || "var(--muted)";
-
+  function setStatus(type, iconCls, nama, msg, conf, location) {
+    const box = document.getElementById("status-box");
+    box.className = (type === "idle" ? "" : type);
+    const color = {success:"var(--green)",error:"var(--red)",warning:"var(--amber)"}[type]||"var(--muted)";
     if (type === "loading") {
       box.innerHTML = `<div class="spinner"></div><div><div class="status-nama">${nama}</div><div class="status-msg">${msg}</div></div>`;
     } else {
-      const locHtml = location
-        ? `<div class="status-loc"><i data-lucide="map-pin" style="width:12px;height:12px;"></i><span>${escHtml(location)}</span></div>`
-        : "";
-      box.innerHTML =
-        `<span class="status-icon"><i data-lucide="${iconName}" style="width:28px;height:28px;color:${color}"></i></span>` +
-        `<div>` +
-          `<div class="status-nama">${escHtml(nama)}</div>` +
-          `<div class="status-msg">${escHtml(msg)}</div>` +
-          (conf ? `<div class="status-msg">${escHtml(conf)}</div>` : "") +
-          locHtml +
-        `</div>`;
-      lucide.createIcons();
+      const locHtml = location ? `<div class="status-loc"><i class="bi bi-geo-alt" style="font-size:11px;"></i><span>${escHtml(location)}</span></div>` : "";
+      box.innerHTML = `<span class="status-icon"><i class="bi ${iconCls}" style="font-size:28px;color:${color};"></i></span>
+        <div><div class="status-nama">${escHtml(nama)}</div><div class="status-msg">${escHtml(msg)}</div>${conf?`<div class="status-msg">${escHtml(conf)}</div>`:""}${locHtml}</div>`;
     }
   }
 
-  function escHtml(str) {
-    if (!str) return "";
-    return String(str)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  function escHtml(s) {
+    if (!s) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
-  // ── Refresh list ───────────────────────────────────────────────
   async function refreshList() {
     const resp = await fetch("/api/absensi-hari-ini");
     const data = await resp.json();
-    document.getElementById("n-masuk").textContent  = data.filter(d => d.tipe === "masuk").length;
-    document.getElementById("n-pulang").textContent = data.filter(d => d.tipe === "pulang").length;
+    document.getElementById("n-masuk").textContent  = data.filter(d=>d.tipe==="masuk").length;
+    document.getElementById("n-pulang").textContent = data.filter(d=>d.tipe==="pulang").length;
     document.getElementById("absen-list").innerHTML = [...data].reverse().map(d =>
-      `<div class="absen-item">` +
-        `<span class="badge badge-${d.tipe}">${d.tipe.toUpperCase()}</span>` +
-        `<span class="absen-nama">${escHtml(d.nama)}</span>` +
-        `<span class="absen-waktu">${d.waktu.slice(11,16)}</span>` +
-      `</div>`
-    ).join("") || `<div style="text-align:center;color:var(--muted);padding:32px 0;font-size:.85rem;">Belum ada absensi hari ini</div>`;
+      `<div class="absen-item">
+        <span class="status-badge ${d.tipe==='masuk'?'badge-masuk':'badge-pulang'}">${d.tipe.toUpperCase()}</span>
+        <span class="absen-nama">${escHtml(d.nama)}</span>
+        <span class="absen-waktu">${d.waktu.slice(11,16)}</span>
+      </div>`
+    ).join("") || `<div style="text-align:center;color:var(--muted);padding:32px 0;font-size:.84rem;">Belum ada absensi hari ini</div>`;
   }
   setInterval(refreshList, 15000);
 </script>

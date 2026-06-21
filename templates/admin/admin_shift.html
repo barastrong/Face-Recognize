@@ -1,324 +1,222 @@
 {% extends "base.html" %}
 {% block title %}Shift Master · Face ID{% endblock %}
-{% block title_short %}<i data-lucide="clock-4" style="width:16px;height:16px;"></i> Shift Master{% endblock %}
+{% block title_short %}<i class="bi bi-alarm"></i> Shift Master{% endblock %}
 {% block content %}
-<style>
-  .shift-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 99px; font-size: .75rem;
-    font-weight: 600; background: var(--accent-dim); color: var(--accent);
-    white-space: nowrap;
-  }
-  .modal-backdrop {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.6); z-index: 300;
-    align-items: center; justify-content: center; padding: 16px;
-  }
-  .modal-backdrop.show { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px; width: 100%; max-width: 460px;
-    max-height: 90vh; overflow-y: auto;
-  }
-  .modal-title { font-weight: 700; font-size: 1rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
-  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
-  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  @media (max-width: 480px) { .row-2 { grid-template-columns: 1fr; } }
-  .inline-form { display: inline; }
-  .no-shift { color: var(--muted); font-size: .8rem; }
-
-  /* ── Time Picker ── */
-  .time-picker {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 7px 12px; transition: border-color .15s;
-  }
-  .time-picker:focus-within { border-color: var(--accent); }
-  .time-picker select {
-    background: transparent; border: none; outline: none;
-    color: var(--text); font-size: .95rem; font-weight: 600;
-    cursor: pointer; padding: 0; appearance: none;
-    -webkit-appearance: none; text-align: center;
-    width: 42px;
-  }
-  .time-picker select option { background: var(--surface); }
-  .time-sep { color: var(--muted); font-weight: 700; font-size: 1rem; line-height: 1; }
-    /* Icon kalender putih */
-  .form-control[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    opacity: 1;
-    cursor: pointer;
-  }
-  .time-icon { color: var(--muted); display: flex; align-items: center; margin-right: 2px; }
-</style>
 
 <div class="page-header">
   <div class="page-header-left">
-    <h1><i data-lucide="clock-4" style="width:20px;height:20px;"></i> Shift Master</h1>
+    <h1><i class="bi bi-alarm"></i> Shift Master</h1>
     <div class="page-sub">Kelola shift kerja — karyawan memilih shiftnya saat absensi</div>
   </div>
-  <button class="btn btn-primary" onclick="openModal('modal-tambah')">
-    <i data-lucide="plus" style="width:15px;height:15px;"></i> Tambah Shift
+  <button class="btn-accent" type="button" data-bs-toggle="modal" data-bs-target="#modalTambahShift">
+    <i class="bi bi-plus-lg"></i> Tambah Shift
   </button>
 </div>
 
 <!-- ── Tabel Shift Master ── -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="card-header">
-    <div class="card-title"><i data-lucide="list" style="width:16px;height:16px;"></i> Daftar Shift</div>
-    <span style="font-size:.8rem;color:var(--muted);">{{ shifts|length }} shift</span>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Nama Shift</th><th>Jam Masuk</th><th>Jam Pulang</th>
-          <th>Toleransi</th><th>Shift Malam</th><th>Keterangan</th><th>Aksi</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in shifts %}
-        <tr>
-          <td><strong>{{ s.nama_shift }}</strong></td>
-          <td><span class="shift-badge"><i data-lucide="log-in" style="width:12px;height:12px;"></i> {{ s.jam_masuk }}</span></td>
-          <td><span class="shift-badge" style="background:rgba(245,158,11,.12);color:var(--amber);"><i data-lucide="log-out" style="width:12px;height:12px;"></i> {{ s.jam_pulang }}</span></td>
-          <td class="td-muted">{{ s.toleransi_menit }} menit</td>
-          <td>
-            {% if s.melewati_tengah_malam %}
-              <span class="badge" style="background:rgba(99,102,241,.12);color:var(--accent);">Ya</span>
-            {% else %}<span class="td-muted">–</span>{% endif %}
-          </td>
-          <td class="td-muted">{{ s.keterangan or '–' }}</td>
-          <td>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-outline btn-sm"
-                data-id="{{ s.id }}"
-                data-nama="{{ s.nama_shift }}"
-                data-masuk="{{ s.jam_masuk }}"
-                data-pulang="{{ s.jam_pulang }}"
-                data-toleransi="{{ s.toleransi_menit }}"
-                data-malam="{{ '1' if s.melewati_tengah_malam else '0' }}"
-                data-ket="{{ s.keterangan or '' }}"
-                onclick="openEditBtn(this)">
-                <i data-lucide="pencil" style="width:12px;height:12px;"></i> Edit
-              </button>
-              <form method="POST" action="{{ url_for('admin_hapus_shift', shift_id=s.id) }}"
-                    onsubmit="return confirm('Hapus shift {{ s.nama_shift }}?')" class="inline-form">
-                <button class="btn btn-danger btn-sm" type="submit">
-                  <i data-lucide="trash-2" style="width:12px;height:12px;"></i> Hapus
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="card-header-custom">
+      <div class="card-title-text"><i class="bi bi-list-ul"></i> Daftar Shift</div>
+      <span style="font-size:.8rem;color:var(--muted);">{{ shifts|length }} shift</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nama Shift</th>
+            <th>Jam Masuk</th>
+            <th>Jam Pulang</th>
+            <th>Toleransi</th>
+            <th>Shift Malam</th>
+            <th>Keterangan</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in shifts %}
+          <tr>
+            <td><strong>{{ s.nama_shift }}</strong></td>
+            <td><span class="status-badge badge-masuk"><i class="bi bi-box-arrow-in-right"></i> {{ s.jam_masuk }}</span></td>
+            <td><span class="status-badge badge-pulang"><i class="bi bi-box-arrow-right"></i> {{ s.jam_pulang }}</span></td>
+            <td class="td-muted">{{ s.toleransi_menit }} menit</td>
+            <td>
+              {% if s.melewati_tengah_malam %}
+                <span class="status-badge badge-admin">Ya</span>
+              {% else %}<span class="td-muted">–</span>{% endif %}
+            </td>
+            <td class="td-muted">{{ s.keterangan or '–' }}</td>
+            <td>
+              <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn-ghost btn-sm-icon"
+                  data-id="{{ s.id }}"
+                  data-nama="{{ s.nama_shift }}"
+                  data-masuk="{{ s.jam_masuk }}"
+                  data-pulang="{{ s.jam_pulang }}"
+                  data-toleransi="{{ s.toleransi_menit }}"
+                  data-malam="{{ '1' if s.melewati_tengah_malam else '0' }}"
+                  data-ket="{{ s.keterangan or '' }}"
+                  onclick="openEditShift(this)">
+                  <i class="bi bi-pencil"></i> Edit
                 </button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">
-            Belum ada shift.
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-tambah')" style="margin-left:8px;">Tambah sekarang</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ── Info: karyawan pilih sendiri ── -->
-<div class="card" style="margin-bottom:20px;background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.25);">
-  <div style="display:flex;align-items:flex-start;gap:12px;">
-    <i data-lucide="info" style="width:18px;height:18px;color:var(--accent);flex-shrink:0;margin-top:2px;"></i>
-    <div>
-      <div style="font-weight:600;font-size:.9rem;margin-bottom:4px;">Cara Kerja Shift</div>
-      <div style="font-size:.82rem;color:var(--muted);line-height:1.6;">
-        Karyawan <strong style="color:var(--text);">memilih shift sendiri</strong> saat melakukan absensi masuk.
-        Setelah wajah terdeteksi, muncul daftar shift di bawah ini dan karyawan memilih sesuai jadwal hari itu.
-        Admin hanya perlu mendefinisikan shift-shift yang tersedia di sini.
-      </div>
+                <form method="POST" action="{{ url_for('admin_hapus_shift', shift_id=s.id) }}"
+                      onsubmit="return confirm('Hapus shift {{ s.nama_shift }}?')" class="d-inline m-0">
+                  <button class="btn-danger-soft btn-sm-icon" type="submit">
+                    <i class="bi bi-trash3"></i> Hapus
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center" style="color:var(--muted);padding:32px;">
+              Belum ada shift.
+              <button class="btn-accent btn-sm-icon ms-2" type="button" data-bs-toggle="modal" data-bs-target="#modalTambahShift">Tambah sekarang</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
-<!-- ── Modal Tambah ── -->
-<div class="modal-backdrop" id="modal-tambah" onclick="closeModalOutside(event,'modal-tambah')">
-  <div class="modal">
-    <div class="modal-title"><i data-lucide="plus-circle" style="width:18px;height:18px;color:var(--accent);"></i> Tambah Shift Baru</div>
-    <form method="POST" action="{{ url_for('admin_tambah_shift') }}" onsubmit="injectTime(this,'t_masuk_h','t_masuk_m','jam_masuk','t_pulang_h','t_pulang_m','jam_pulang')">
-      <div class="form-group">
-        <label class="form-label">Nama Shift *</label>
-        <input class="form-control" type="text" name="nama_shift" required placeholder="cth: Shift Pagi">
-      </div>
-      <div class="row-2">
-        <div class="form-group">
-          <label class="form-label">Jam Masuk *</label>
-          <div class="time-picker">
-            <span class="time-icon"><i data-lucide="clock" style="width:14px;height:14px;"></i></span>
-            <select id="t_masuk_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}" {% if h==7 %}selected{% endif %}>{{ '%02d'|format(h) }}</option>{% endfor %}</select>
-            <span class="time-sep">:</span>
-            <select id="t_masuk_m">{% for m in [0,15,30,45] %}<option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}</option>{% endfor %}</select>
-          </div>
-          <input type="hidden" name="jam_masuk" id="tambah_jam_masuk">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Jam Pulang *</label>
-          <div class="time-picker">
-            <span class="time-icon"><i data-lucide="clock" style="width:14px;height:14px;"></i></span>
-            <select id="t_pulang_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}" {% if h==16 %}selected{% endif %}>{{ '%02d'|format(h) }}</option>{% endfor %}</select>
-            <span class="time-sep">:</span>
-            <select id="t_pulang_m">{% for m in [0,15,30,45] %}<option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}</option>{% endfor %}</select>
-          </div>
-          <input type="hidden" name="jam_pulang" id="tambah_jam_pulang">
-        </div>
-      </div>
-      <div class="row-2">
-        <div class="form-group">
-          <label class="form-label">Toleransi Terlambat (menit)</label>
-          <select class="form-control" name="toleransi_menit">
-            {% for t in [0, 5, 10, 15, 20, 30, 45, 60] %}
-            <option value="{{ t }}" {% if t==15 %}selected{% endif %}>{{ t }} menit</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Shift Malam</label>
-          <select class="form-control" name="melewati_tengah_malam">
-            <option value="0">Tidak</option>
-            <option value="1">Ya (lewat tengah malam)</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Keterangan</label>
-        <input class="form-control" type="text" name="keterangan" placeholder="opsional">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="closeModal('modal-tambah')">Batal</button>
-        <button type="submit" class="btn btn-primary"><i data-lucide="save" style="width:14px;height:14px;"></i> Simpan</button>
-      </div>
-    </form>
+<!-- ── Info: karyawan pilih sendiri ── -->
+<div class="info-banner">
+  <i class="bi bi-info-circle-fill"></i>
+  <div>
+    <div style="font-weight:600;font-size:.9rem;margin-bottom:4px;color:var(--text);">Cara Kerja Shift</div>
+    Karyawan <strong style="color:var(--text);">memilih shift sendiri</strong> saat melakukan absensi masuk.
+    Setelah wajah terdeteksi, muncul daftar shift di bawah ini dan karyawan memilih sesuai jadwal hari itu.
+    Admin hanya perlu mendefinisikan shift-shift yang tersedia di sini.
   </div>
 </div>
 
-<!-- ── Modal Edit ── -->
-<div class="modal-backdrop" id="modal-edit" onclick="closeModalOutside(event,'modal-edit')">
-  <div class="modal">
-    <div class="modal-title"><i data-lucide="pencil" style="width:18px;height:18px;color:var(--accent);"></i> Edit Shift</div>
-    <form method="POST" id="form-edit" action="" onsubmit="injectTime(this,'e_masuk_h','e_masuk_m','jam_masuk','e_pulang_h','e_pulang_m','jam_pulang')">
-      <div class="form-group">
-        <label class="form-label">Nama Shift *</label>
-        <input class="form-control" type="text" name="nama_shift" id="edit-nama" required>
-      </div>
-      <div class="row-2">
-        <div class="form-group">
-          <label class="form-label">Jam Masuk *</label>
-          <div class="time-picker">
-            <span class="time-icon"><i data-lucide="clock" style="width:14px;height:14px;"></i></span>
-            <select id="e_masuk_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}">{{ '%02d'|format(h) }}</option>{% endfor %}</select>
-            <span class="time-sep">:</span>
-            <select id="e_masuk_m">{% for m in [0,15,30,45] %}<option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}</option>{% endfor %}</select>
+<!-- ── Modal Tambah Shift ── -->
+<div class="modal fade" id="modalTambahShift" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('admin_tambah_shift') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle c-accent"></i> Tambah Shift Baru</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nama Shift *</label>
+            <input class="form-input" type="text" name="nama_shift" required placeholder="cth: Shift Pagi">
           </div>
-          <input type="hidden" name="jam_masuk" id="edit_jam_masuk">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Jam Pulang *</label>
-          <div class="time-picker">
-            <span class="time-icon"><i data-lucide="clock" style="width:14px;height:14px;"></i></span>
-            <select id="e_pulang_h">{% for h in range(24) %}<option value="{{ '%02d'|format(h) }}">{{ '%02d'|format(h) }}</option>{% endfor %}</select>
-            <span class="time-sep">:</span>
-            <select id="e_pulang_m">{% for m in [0,15,30,45] %}<option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}</option>{% endfor %}</select>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label">Jam Masuk *</label>
+              <input class="form-input" type="time" name="jam_masuk" value="07:00" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Jam Pulang *</label>
+              <input class="form-input" type="time" name="jam_pulang" value="16:00" required>
+            </div>
           </div>
-          <input type="hidden" name="jam_pulang" id="edit_jam_pulang">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label">Toleransi Terlambat</label>
+              <select class="form-input" name="toleransi_menit">
+                {% for t in [0, 5, 10, 15, 20, 30, 45, 60] %}
+                <option value="{{ t }}" {% if t==15 %}selected{% endif %}>{{ t }} menit</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Shift Malam</label>
+              <select class="form-input" name="melewati_tengah_malam">
+                <option value="0">Tidak</option>
+                <option value="1">Ya (lewat tengah malam)</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Keterangan</label>
+            <input class="form-input" type="text" name="keterangan" placeholder="opsional">
+          </div>
         </div>
-      </div>
-      <div class="row-2">
-        <div class="form-group">
-          <label class="form-label">Toleransi (menit)</label>
-          <select class="form-control" name="toleransi_menit" id="edit-toleransi">
-            {% for t in [0, 5, 10, 15, 20, 30, 45, 60] %}
-            <option value="{{ t }}">{{ t }} menit</option>
-            {% endfor %}
-          </select>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn-accent"><i class="bi bi-save"></i> Simpan</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Shift Malam</label>
-          <select class="form-control" name="melewati_tengah_malam" id="edit-tengah-malam">
-            <option value="0">Tidak</option>
-            <option value="1">Ya (lewat tengah malam)</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Keterangan</label>
-        <input class="form-control" type="text" name="keterangan" id="edit-keterangan">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline" onclick="closeModal('modal-edit')">Batal</button>
-        <button type="submit" class="btn btn-primary"><i data-lucide="save" style="width:14px;height:14px;"></i> Update</button>
-      </div>
-    </form>
+      </form>
+    </div>
   </div>
 </div>
 
+<!-- ── Modal Edit Shift ── -->
+<div class="modal fade" id="modalEditShift" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" id="formEditShift" action="">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil c-accent"></i> Edit Shift</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nama Shift *</label>
+            <input class="form-input" type="text" name="nama_shift" id="editNama" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label">Jam Masuk *</label>
+              <input class="form-input" type="time" name="jam_masuk" id="editMasuk" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Jam Pulang *</label>
+              <input class="form-input" type="time" name="jam_pulang" id="editPulang" required>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label">Toleransi</label>
+              <select class="form-input" name="toleransi_menit" id="editToleransi">
+                {% for t in [0, 5, 10, 15, 20, 30, 45, 60] %}
+                <option value="{{ t }}">{{ t }} menit</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label">Shift Malam</label>
+              <select class="form-input" name="melewati_tengah_malam" id="editMalam">
+                <option value="0">Tidak</option>
+                <option value="1">Ya (lewat tengah malam)</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Keterangan</label>
+            <input class="form-input" type="text" name="keterangan" id="editKet">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn-accent"><i class="bi bi-save"></i> Update</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
 <script>
-  // ── Modal helpers ───────────────────────────────────────────────
-  function openModal(id) {
-    document.getElementById(id).classList.add('show');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeModal(id) {
-    document.getElementById(id).classList.remove('show');
-    document.body.style.overflow = '';
-  }
-  function closeModalOutside(e, id) {
-    if (e.target === document.getElementById(id)) closeModal(id);
-  }
-
-  // ── Inject hidden time value sebelum submit ─────────────────────
-  // Menggabungkan dropdown jam + menit → "HH:MM" ke hidden input
-  function injectTime(form, hMasukId, mMasukId, nameMasuk, hPulangId, mPulangId, namePulang) {
-    form.elements[nameMasuk].value =
-      document.getElementById(hMasukId).value + ':' +
-      document.getElementById(mMasukId).value;
-    form.elements[namePulang].value =
-      document.getElementById(hPulangId).value + ':' +
-      document.getElementById(mPulangId).value;
-  }
-
-  // ── Set dropdown dari string "HH:MM" ───────────────────────────
-  function setTimePicker(hId, mId, timeStr) {
-    if (!timeStr) return;
-    const [h, m] = timeStr.split(':');
-    const hSel = document.getElementById(hId);
-    const mSel = document.getElementById(mId);
-    hSel.value = h;
-    // Cari menit terdekat di opsi [00,15,30,45]
-    const mins = [0, 15, 30, 45];
-    const mInt = parseInt(m, 10);
-    const closest = mins.reduce((a, b) => Math.abs(b - mInt) < Math.abs(a - mInt) ? b : a);
-    mSel.value = String(closest).padStart(2, '0');
-  }
-
-  // ── Buka modal edit dengan data shift ──────────────────────────
-  function openEditBtn(btn) {
-    var id       = btn.dataset.id;
-    var nama     = btn.dataset.nama;
-    var masuk    = btn.dataset.masuk;
-    var pulang   = btn.dataset.pulang;
-    var toleransi= btn.dataset.toleransi;
-    var malam    = btn.dataset.malam === '1';
-    var ket      = btn.dataset.ket;
-    openEdit(id, nama, masuk, pulang, toleransi, malam, ket);
-  }
-
-  function openEdit(id, nama, masuk, pulang, toleransi, tengahMalam, ket) {
-    document.getElementById('form-edit').action = `/admin/shift/edit/${id}`;
-    document.getElementById('edit-nama').value = nama;
-    setTimePicker('e_masuk_h', 'e_masuk_m', masuk);
-    setTimePicker('e_pulang_h', 'e_pulang_m', pulang);
-    document.getElementById('edit-toleransi').value = toleransi;
-    document.getElementById('edit-tengah-malam').value = tengahMalam ? '1' : '0';
-    document.getElementById('edit-keterangan').value = ket;
-    openModal('modal-edit');
+  function openEditShift(btn) {
+    document.getElementById('formEditShift').action = '/admin/shift/edit/' + btn.dataset.id;
+    document.getElementById('editNama').value      = btn.dataset.nama;
+    document.getElementById('editMasuk').value     = btn.dataset.masuk;
+    document.getElementById('editPulang').value    = btn.dataset.pulang;
+    document.getElementById('editToleransi').value = btn.dataset.toleransi;
+    document.getElementById('editMalam').value     = btn.dataset.malam;
+    document.getElementById('editKet').value       = btn.dataset.ket;
+    var modal = new bootstrap.Modal(document.getElementById('modalEditShift'));
+    modal.show();
   }
 </script>
 {% endblock %}

@@ -1,22 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Karyawan · Face ID{% endblock %}
-{% block title_short %}<i data-lucide="users" style="width:16px;height:16px;"></i> Karyawan{% endblock %}
+{% block title_short %}<i class="bi bi-people me-1"></i> Karyawan{% endblock %}
 {% block content %}
 
 <div class="page-header">
-  <div class="page-header-left">
-    <h1><i data-lucide="users" style="width:20px;height:20px;"></i> Data Karyawan</h1>
+  <div>
+    <h1><i class="bi bi-people" style="color:var(--accent);"></i> Data Karyawan</h1>
     <div class="page-sub">{{ karyawan|length }} karyawan terdaftar</div>
   </div>
-  <a href="{{ url_for('admin_daftar_karyawan') }}" class="btn btn-primary">
-    <i data-lucide="user-plus" style="width:15px;height:15px;"></i>
-    <span>Daftarkan Karyawan</span>
+  <a href="{{ url_for('admin_daftar_karyawan') }}" class="btn-accent">
+    <i class="bi bi-person-plus"></i> Daftarkan Karyawan
   </a>
 </div>
 
-<div class="card">
+<div class="card p-3">
   <div class="table-wrap">
-    <table>
+    <table class="data-table">
       <thead>
         <tr><th>No</th><th>NIP</th><th>Nama</th><th>Divisi</th><th>Terdaftar</th><th>Aksi</th></tr>
       </thead>
@@ -26,20 +25,20 @@
           <td class="td-muted">{{ loop.index }}</td>
           <td class="td-muted">{{ k.nip }}</td>
           <td><strong>{{ k.nama }}</strong></td>
-          <td>{{ k.divisi or '-' }}</td>
-          <td class="td-muted">{{ k.terdaftar[:10] if k.terdaftar else '-' }}</td>
+          <td class="td-muted">{{ k.divisi or '–' }}</td>
+          <td class="td-muted">{{ k.terdaftar[:10] if k.terdaftar else '–' }}</td>
           <td>
             <form method="POST" action="{{ url_for('admin_hapus_karyawan', nip=k.id) }}"
                   onsubmit="return confirm('Hapus {{ k.nama }}?')" style="margin:0;">
-              <button class="btn btn-danger btn-sm" type="submit">
-                <i data-lucide="trash-2" style="width:13px;height:13px;"></i> Hapus
+              <button class="btn-danger-soft" type="submit">
+                <i class="bi bi-trash3"></i> Hapus
               </button>
             </form>
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">
+          <td colspan="6" style="text-align:center;color:var(--muted);padding:36px;">
             Belum ada karyawan.
             <a href="{{ url_for('admin_daftar_karyawan') }}" style="color:var(--accent);">Daftarkan sekarang</a>
           </td>
@@ -49,19 +48,4 @@
     </table>
   </div>
 </div>
-
-{% block scripts %}
-<!-- <script>
-  function showFotoModal(nama, urls) {
-    document.getElementById('foto-modal-nama').textContent = nama + ' — Foto Referensi';
-    document.getElementById('foto-modal-grid').innerHTML = urls.map(function(u) {
-      return '<img src="' + u + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--border);">';
-    }).join('');
-    document.getElementById('foto-modal').style.display = 'flex';
-  }
-  function closeFotoModal() {
-    document.getElementById('foto-modal').style.display = 'none';
-  }
-</script> -->
-{% endblock %}
 {% endblock %}

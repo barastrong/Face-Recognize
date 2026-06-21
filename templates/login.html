@@ -1,127 +1,179 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-bs-theme="dark">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login · Absensi Face ID</title>
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #0b0d14; --surface: #13151f; --card: #1a1d2e;
-      --border: #252840; --accent: #6366f1; --red: #ef4444;
-      --text: #e2e8f0; --muted: #6b7280;
+      --bg:      #0c0e18;
+      --surface: #13162b;
+      --card:    #1a1e32;
+      --border:  #252a45;
+      --accent:  #6c63ff;
+      --accent-dim: rgba(108,99,255,.13);
+      --red:     #ef4444;
+      --text:    #e4e9f5;
+      --muted:   #6b7599;
     }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg); color: var(--text);
-      min-height: 100vh; display: flex;
-      align-items: center; justify-content: center;
-      padding: 16px;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
     }
 
-    .login-wrap { width: 100%; max-width: 380px; }
+    /* Decorative blobs */
+    body::before, body::after {
+      content: '';
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); pointer-events: none; z-index: 0;
+    }
+    body::before {
+      width: 400px; height: 400px;
+      background: rgba(108,99,255,.08);
+      top: -100px; right: -100px;
+    }
+    body::after {
+      width: 300px; height: 300px;
+      background: rgba(108,99,255,.05);
+      bottom: -80px; left: -80px;
+    }
+
+    .login-wrapper { width: 100%; max-width: 390px; position: relative; z-index: 1; }
 
     .login-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 18px; padding: 36px 32px 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 36px 32px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
     }
 
     .login-logo {
-      width: 56px; height: 56px; border-radius: 16px;
-      background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.3);
+      width: 58px; height: 58px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(108,99,255,.35);
+      border-radius: 16px;
       display: flex; align-items: center; justify-content: center;
-      color: var(--accent); margin: 0 auto 16px;
+      color: var(--accent); font-size: 26px;
+      margin: 0 auto 18px;
     }
-    .login-title { text-align: center; font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
-    .login-sub   { text-align: center; font-size: .83rem; color: var(--muted); margin-bottom: 28px; }
+
+    .login-title {
+      text-align: center; font-size: 1.3rem; font-weight: 700; margin-bottom: 4px;
+    }
+    .login-sub {
+      text-align: center; font-size: .82rem;
+      color: var(--muted); margin-bottom: 28px;
+    }
 
     .form-group { margin-bottom: 16px; }
-    .form-label { display: block; font-size: .81rem; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
-    .input-wrap  { position: relative; }
-    .input-icon  { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); display: flex; pointer-events: none; }
+    .form-label { display: block; font-size: .79rem; color: var(--muted); font-weight: 500; margin-bottom: 6px; }
+
+    .input-wrap { position: relative; }
+    .input-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 15px; pointer-events: none;
+    }
     .form-control {
-      width: 100%; padding: 10px 14px 10px 38px;
-      border-radius: 9px; border: 1px solid var(--border);
+      width: 100%; padding: 10px 13px 10px 38px;
+      border-radius: 10px; border: 1px solid var(--border);
       background: var(--card); color: var(--text);
-      font-size: .9rem; outline: none; transition: border-color .15s;
+      font-size: .9rem; outline: none;
+      transition: border-color .15s, box-shadow .15s;
       -webkit-appearance: none;
     }
-    .form-control:focus { border-color: var(--accent); }
+    .form-control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,.15);
+    }
+    .form-control::placeholder { color: var(--muted); }
 
     .btn-login {
-      width: 100%; padding: 11px; border-radius: 9px; border: none;
-      background: var(--accent); color: #fff; font-size: .93rem;
-      font-weight: 700; cursor: pointer; margin-top: 6px;
+      width: 100%; padding: 11px; border-radius: 10px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: .93rem; font-weight: 700; cursor: pointer;
+      margin-top: 8px;
       display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: opacity .15s;
+      transition: opacity .15s, box-shadow .15s;
+      letter-spacing: .01em;
     }
-    .btn-login:hover { opacity: .88; }
+    .btn-login:hover {
+      opacity: .88;
+      box-shadow: 0 0 24px rgba(108,99,255,.35);
+    }
     .btn-login:active { opacity: .75; }
 
-    .alert {
+    .alert-error {
       display: flex; align-items: center; gap: 9px;
-      padding: 10px 14px; border-radius: 9px; margin-bottom: 18px;
-      font-size: .85rem; background: rgba(239,68,68,.1);
-      border: 1px solid rgba(239,68,68,.25); color: var(--red);
+      padding: 10px 14px; border-radius: 10px; margin-bottom: 18px;
+      font-size: .84rem;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.25);
+      color: var(--red);
     }
 
-    .divider { height: 1px; background: var(--border); margin: 22px 0; }
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 22px 0; }
 
-    .health-link { text-align: center; font-size: .78rem; color: var(--muted); }
-    .health-link a { color: var(--accent); text-decoration: none; }
-    .health-link a:hover { text-decoration: underline; }
+    .health-text { text-align: center; font-size: .76rem; color: var(--muted); }
+    .health-text a { color: var(--accent); text-decoration: none; }
+    .health-text a:hover { text-decoration: underline; }
 
-    @media (max-width: 400px) {
-      .login-card { padding: 28px 20px 24px; border-radius: 14px; }
-      .login-title { font-size: 1.1rem; }
+    @media (max-width: 420px) {
+      .login-card { padding: 28px 22px 26px; border-radius: 14px; }
+      .login-title { font-size: 1.15rem; }
     }
   </style>
 </head>
 <body>
-  <div class="login-wrap">
+  <div class="login-wrapper">
     <div class="login-card">
       <div class="login-logo">
-        <i data-lucide="scan-face" style="width:26px;height:26px;"></i>
+        <i class="bi bi-person-bounding-box"></i>
       </div>
       <div class="login-title">Absensi Face ID</div>
       <div class="login-sub">Masuk untuk melakukan absensi</div>
 
       {% for cat, msg in get_flashed_messages(with_categories=true) %}
-      <div class="alert">
-        <i data-lucide="x-circle" style="width:15px;height:15px;flex-shrink:0"></i>
+      <div class="alert-error">
+        <i class="bi bi-x-circle-fill" style="flex-shrink:0;"></i>
         {{ msg }}
       </div>
       {% endfor %}
 
-      <form method="POST">
+      <form method="POST" autocomplete="on">
         <div class="form-group">
           <label class="form-label">Email</label>
           <div class="input-wrap">
-            <span class="input-icon"><i data-lucide="mail" style="width:15px;height:15px;"></i></span>
-            <input class="form-control" type="email" name="email" placeholder="nama@perusahaan.com" required autofocus autocomplete="email">
+            <i class="bi bi-envelope input-icon"></i>
+            <input class="form-control" type="email" name="email"
+                   placeholder="nama@perusahaan.com" required autofocus autocomplete="email">
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
           <div class="input-wrap">
-            <span class="input-icon"><i data-lucide="lock" style="width:15px;height:15px;"></i></span>
-            <input class="form-control" type="password" name="password" placeholder="Masukkan password" required autocomplete="current-password">
+            <i class="bi bi-lock input-icon"></i>
+            <input class="form-control" type="password" name="password"
+                   placeholder="Masukkan password" required autocomplete="current-password">
           </div>
         </div>
         <button class="btn-login" type="submit">
-          <i data-lucide="log-in" style="width:16px;height:16px;"></i>
-          Masuk
+          <i class="bi bi-box-arrow-in-right"></i> Masuk
         </button>
       </form>
 
-      <div class="divider"></div>
-      <div class="health-link">
-        Status sistem: <a href="/health" target="_blank">/health</a>
-      </div>
+      <hr class="divider">
+      <p class="health-text">Status sistem: <a href="/health" target="_blank">/health</a></p>
     </div>
   </div>
-
-  <script>lucide.createIcons();</script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

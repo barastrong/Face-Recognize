@@ -1,50 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Riwayat Absensi · Face ID{% endblock %}
-{% block title_short %}<i data-lucide="history" style="width:16px;height:16px;"></i> Riwayat Absensi{% endblock %}
+{% block title_short %}<i class="bi bi-clock-history me-1"></i> Riwayat Absensi{% endblock %}
 {% block content %}
 
 <div class="page-header">
-  <div class="page-header-left">
-    <h1><i data-lucide="history" style="width:20px;height:20px;"></i> Riwayat Absensi Saya</h1>
+  <div>
+    <h1><i class="bi bi-clock-history" style="color:var(--accent);"></i> Riwayat Absensi Saya</h1>
     <div class="page-sub">30 data absensi terakhir</div>
   </div>
 </div>
 
 {% if not karyawan_id %}
-<div class="card" style="text-align:center;padding:40px;color:var(--muted);">
-  <i data-lucide="user-x" style="width:40px;height:40px;opacity:.3;margin-bottom:12px;display:block;margin-left:auto;margin-right:auto;"></i>
-  <div>Akun ini belum terhubung ke data karyawan.</div>
-  <div style="font-size:.8rem;margin-top:6px;">Hubungi admin untuk menghubungkan NIP karyawan ke akun Anda.</div>
+<div class="card p-5 text-center" style="color:var(--muted);">
+  <i class="bi bi-person-slash" style="font-size:44px;opacity:.25;display:block;margin-bottom:14px;"></i>
+  <div style="font-weight:600;margin-bottom:5px;">Akun belum terhubung</div>
+  <div style="font-size:.82rem;">Hubungi admin untuk menghubungkan NIP karyawan ke akun Anda.</div>
 </div>
 {% else %}
 
 {% set total     = riwayat | length %}
 {% set n_selesai = riwayat | selectattr('check_out', 'ne', '-') | list | length %}
 {% set n_proses  = total - n_selesai %}
-<div class="grid-3" style="margin-bottom:20px;">
-  <div class="card metric">
-    <div class="metric-icon bg-accent"><i data-lucide="calendar" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-accent">{{ total }}</div>
-    <div class="metric-lbl">Total Absensi</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-4">
+    <div class="card metric-card">
+      <div class="metric-icon bg-accent-soft"><i class="bi bi-calendar3"></i></div>
+      <div class="metric-num c-accent">{{ total }}</div>
+      <div class="metric-lbl">Total Absensi</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-green"><i data-lucide="check-circle" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-green">{{ n_selesai }}</div>
-    <div class="metric-lbl">Sudah Checkout</div>
+  <div class="col-12 col-sm-4">
+    <div class="card metric-card">
+      <div class="metric-icon bg-green-soft"><i class="bi bi-check-circle"></i></div>
+      <div class="metric-num c-green">{{ n_selesai }}</div>
+      <div class="metric-lbl">Sudah Checkout</div>
+    </div>
   </div>
-  <div class="card metric">
-    <div class="metric-icon bg-amber"><i data-lucide="clock" style="width:18px;height:18px;"></i></div>
-    <div class="metric-num c-amber">{{ n_proses }}</div>
-    <div class="metric-lbl">Belum Checkout</div>
+  <div class="col-12 col-sm-4">
+    <div class="card metric-card">
+      <div class="metric-icon bg-amber-soft"><i class="bi bi-clock"></i></div>
+      <div class="metric-num c-amber">{{ n_proses }}</div>
+      <div class="metric-lbl">Belum Checkout</div>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <div class="card-title"><i data-lucide="table-2" style="width:16px;height:16px;"></i> Detail Riwayat</div>
+<div class="card p-3">
+  <div class="card-header-custom">
+    <span class="card-title-text"><i class="bi bi-table"></i> Detail Riwayat</span>
   </div>
   <div class="table-wrap">
-    <table>
+    <table class="data-table">
       <thead>
         <tr>
           <th>No</th>
@@ -53,7 +60,7 @@
           <th>Shift</th>
           <th>Check In</th>
           <th>Check Out</th>
-          <th>Time</th>
+          <th>Durasi</th>
           <th>Lokasi</th>
         </tr>
       </thead>
@@ -61,18 +68,17 @@
         {% for r in riwayat %}
         <tr>
           <td class="td-muted">{{ loop.index }}</td>
-          {% if r.nip !='-' %}
-          <td><span class="badge" style="background:rgba(107,114,128,.12);color:var(--muted);">{{ r.nip }}</span></td>
-          {% else %}
-          <td class="td-muted">–</td>
-          {% endif %}
+          <td>
+            {% if r.nip != '-' %}
+              <span class="status-badge badge-karyawan">{{ r.nip }}</span>
+            {% else %}
+              <span class="td-muted">–</span>
+            {% endif %}
+          </td>
           <td>{{ r.tanggal }}</td>
           <td>
             {% if r.nama_shift != '-' %}
-              <span class="badge" style="background:var(--accent-dim);color:var(--accent);">{{ r.nama_shift }}</span>
-              <!-- {% if r.jam_shift != '-' %}
-                <div style="font-size:.72rem;color:var(--muted);margin-top:3px;">{{ r.jam_shift }}</div>
-              {% endif %} -->
+              <span class="status-badge badge-admin">{{ r.nama_shift }}</span>
             {% else %}
               <span class="td-muted">–</span>
             {% endif %}
@@ -87,10 +93,10 @@
               <span style="color:var(--amber);font-weight:600;">{{ r.check_out }}</span>
             {% else %}<span class="td-muted">–</span>{% endif %}
           </td>
-          <td style="white-space:nowrap;font-family:monospace;font-size:.85rem;">
+          <td style="white-space:nowrap;font-family:monospace;font-size:.83rem;">
             {% if r.check_in != '-' %}
               {% if r.durasi %}
-                <span style="color:var(--muted);">{{ r.durasi }}</span>
+                <span class="td-muted">{{ r.durasi }}</span>
               {% else %}
                 <span class="live-timer" data-start="{{ r.check_in_ts }}">00:00:00</span>
               {% endif %}
@@ -98,13 +104,14 @@
               <span class="td-muted">–</span>
             {% endif %}
           </td>
-          <td class="td-muted" style="font-size:.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ r.location }}">
+          <td class="td-muted" style="font-size:.77rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="{{ r.location }}">
             {{ r.location if r.location != '-' else '–' }}
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" style="text-align:center;color:var(--muted);padding:32px;">
+          <td colspan="8" style="text-align:center;color:var(--muted);padding:36px;">
             Belum ada riwayat absensi
           </td>
         </tr>
@@ -117,8 +124,9 @@
 <script>
 (function() {
   function fmtSec(s) {
-    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+    return String(Math.floor(s/3600)).padStart(2,'0') + ':' +
+           String(Math.floor((s%3600)/60)).padStart(2,'0') + ':' +
+           String(s%60).padStart(2,'0');
   }
   function tick() {
     var now = Math.floor(Date.now() / 1000);
@@ -126,8 +134,7 @@
       el.textContent = fmtSec(Math.max(0, now - parseInt(el.dataset.start, 10)));
     });
   }
-  tick();
-  setInterval(tick, 1000);
+  tick(); setInterval(tick, 1000);
 })();
 </script>
 {% endif %}
