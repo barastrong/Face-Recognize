@@ -1,9 +1,3 @@
-"""
-face_engine.py
-Core ML engine: InsightFace ArcFace
-Database: PostgreSQL langsung (tabel user, karyawan, absensi)
-"""
-
 import os, pickle
 from pathlib import Path
 from datetime import datetime, date
