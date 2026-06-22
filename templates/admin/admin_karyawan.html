@@ -28,7 +28,7 @@
           <td class="td-muted">{{ k.divisi or '–' }}</td>
           <td class="td-muted">{{ k.terdaftar[:10] if k.terdaftar else '–' }}</td>
           <td>
-            <form method="POST" action="{{ url_for('admin_hapus_karyawan', nip=k.id) }}"
+            <form method="POST" action="{{ url_for('admin_hapus_karyawan', karyawan_id=k.id) }}"
                   onsubmit="return confirm('Hapus {{ k.nama }}?')" style="margin:0;">
               <button class="btn-danger-soft" type="submit">
                 <i class="bi bi-trash3"></i> Hapus

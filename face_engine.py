@@ -1,4 +1,4 @@
-import os, pickle
+import os, pickle, json
 from pathlib import Path
 from datetime import datetime, date
 
@@ -38,6 +38,22 @@ def get_db_connection():
         host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
         user=DB_USER, password=DB_PASSWORD,
     )
+
+
+def _append_audit_log(event_type: str, payload: dict):
+    try:
+        log_dir = Path("logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_path = log_dir / "system.log"
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "event": event_type,
+            **payload,
+        }
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, default=str, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[ERROR] append audit log: {e}")
 
 
 def test_connection() -> dict:
@@ -306,6 +322,15 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
         row = cur.fetchone()
         cur.close(); conn.close()
         if not row:
+            _append_audit_log("absensi", {
+                "status": "error",
+                "reason": "karyawan tidak ditemukan",
+                "input_nip": nip,
+                "input_nama": nama,
+                "tipe": tipe,
+                "location": location,
+                "shift_id": shift_id,
+            })
             return {"success": False, "msg": f"Karyawan {nama} tidak ditemukan"}
         karyawan_id = row[0]
 
@@ -316,12 +341,25 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
     if location and len(location) > 255:
         location = location[:252] + "..."
 
+    log_payload = {
+        "input_nip": nip,
+        "input_nama": nama,
+        "tipe": tipe,
+        "location": location,
+        "shift_id": shift_id,
+        "karyawan_id": karyawan_id,
+    }
+
     conn = get_db_connection()
     cur  = conn.cursor()
     try:
         cur.execute("SELECT nip, nama FROM karyawan WHERE id = %s", (karyawan_id,))
         k_row = cur.fetchone()
         if not k_row or not k_row[0]:
+            _append_audit_log("absensi", {**log_payload,
+                "status": "error",
+                "reason": "NIP karyawan tidak ditemukan",
+            })
             return {"success": False, "msg": "NIP karyawan tidak ditemukan, isi NIP terlebih dahulu"}
         nip_val  = k_row[0]
         nama_val = k_row[1]
@@ -333,6 +371,12 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
                 (karyawan_id, tanggal)
             )
             if cur.fetchone():
+                _append_audit_log("absensi", {**log_payload,
+                    "status": "error",
+                    "reason": "sudah absen masuk hari ini",
+                    "nip": nip_val,
+                    "nama": nama_val,
+                })
                 return {"success": False, "msg": f"{nama} sudah absen masuk hari ini"}
 
             cur.execute(
@@ -344,6 +388,13 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
                  karyawan_id, tanggal, now, confidence, location, shift_id or None)
             )
             conn.commit()
+            _append_audit_log("absensi", {**log_payload,
+                "status": "success",
+                "action": "masuk",
+                "nip": nip_val,
+                "nama": nama_val,
+                "message": f"Absen masuk berhasil: {nama} pukul {waktu_str}",
+            })
             return {"success": True, "msg": f"Absen masuk berhasil: {nama} pukul {waktu_str}"}
 
         else:  # pulang
@@ -354,6 +405,12 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
             )
             row = cur.fetchone()
             if not row:
+                _append_audit_log("absensi", {**log_payload,
+                    "status": "error",
+                    "reason": "belum absen masuk hari ini",
+                    "nip": nip_val,
+                    "nama": nama_val,
+                })
                 return {"success": False, "msg": f"{nama} belum absen masuk hari ini"}
 
             cur.execute(
@@ -364,10 +421,21 @@ def catat_absensi(nip: str, nama: str, tipe: str, confidence: float,
                 (now, confidence, now, confidence, location, row[0])
             )
             conn.commit()
+            _append_audit_log("absensi", {**log_payload,
+                "status": "success",
+                "action": "pulang",
+                "nip": nip_val,
+                "nama": nama_val,
+                "message": f"Absen pulang berhasil: {nama} pukul {waktu_str}",
+            })
             return {"success": True, "msg": f"Absen pulang berhasil: {nama} pukul {waktu_str}"}
 
     except Exception as e:
         conn.rollback()
+        _append_audit_log("absensi", {**log_payload,
+            "status": "error",
+            "reason": str(e),
+        })
         return {"success": False, "msg": str(e)}
     finally:
         cur.close()

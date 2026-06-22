@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Logs · Face ID{% endblock %}
+{% block title_short %}<i class="bi bi-file-earmark-text me-1"></i> Logs{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-file-earmark-text" style="color:var(--accent);"></i> Log Sistem</h1>
+    <div class="page-sub">Tinjau entri log sistem untuk semua event dan unduh file log sebagai backup.</div>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('admin_download_logs') }}" class="btn btn-accent">
+      <i class="bi bi-download"></i> Unduh Log
+    </a>
+  </div>
+</div>
+
+<div class="card p-3 mb-4">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="badge badge-admin">Jumlah entri: {{ entries | length }}</div>
+    <div class="text-muted" style="font-size:.94rem;">Menampilkan hingga 100 entri terbaru.</div>
+  </div>
+</div>
+
+<div class="card p-3">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Waktu</th>
+          <th>Event</th>
+          <th>NIP</th>
+          <th>Nama</th>
+          <th>Tipe</th>
+          <th>Status</th>
+          <th>Lokasi</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in entries %}
+        <tr>
+          <td class="td-muted">{{ loop.index }}</td>
+          <td>{{ entry.timestamp }}</td>
+          <td>{{ entry.event | replace('_', ' ') | title }}</td>
+          <td class="td-muted">{{ entry.get('nip', '-') }}</td>
+          <td>{{ entry.get('nama', '-') }}</td>
+          <td class="td-muted">{{ entry.get('tipe', '-') }}</td>
+          <td class="td-muted">{{ entry.get('status', '-') }}</td>
+          <td class="td-muted">{{ entry.get('location', '-') }}</td>
+          <td style="font-size:.82rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ entry | tojson | safe }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align:center;color:var(--muted);padding:36px;">
+            Tidak ada log yang tersedia. Silakan lakukan backup setelah absensi tercatat.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

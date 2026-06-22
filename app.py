@@ -1,4 +1,4 @@
-import os, base64, io
+import os, base64, io, json
 from datetime import date, timedelta, datetime
 from functools import wraps
 import socket
@@ -20,7 +20,8 @@ from face_engine import (
     get_absensi_karyawan,
     buat_overtime_request, get_overtime_requests, update_overtime_status,
     buat_home_early_request, get_home_early_requests, update_home_early_status,
-    get_shift_aktif_karyawan, get_db_connection
+    get_shift_aktif_karyawan, get_db_connection,
+    _append_audit_log
 )
 
 load_dotenv()
@@ -117,6 +118,13 @@ def login():
             conn.commit()
             cur.close()
             conn.close()
+            _append_audit_log("user_login", {
+                "user_id": user["id"],
+                "email": user["email"],
+                "role": user["role"],
+                "ip_address": ipv4_address,
+                "success": True
+            })
             if user["role"] == "admin":
                 return redirect(url_for("admin_dashboard"))
             return redirect(url_for("absensi"))
@@ -143,6 +151,11 @@ def logout():
         conn.commit()
         cur.close()
         conn.close()
+    _append_audit_log("user_logout", {
+        "user_id": user_id,
+        "ip_address": session.get('address'),
+        "success": True
+    })
     session.clear()
     return redirect(url_for("login"))
 
@@ -303,15 +316,39 @@ def admin_daftar_karyawan():
             return redirect(request.url)
         result = engine.register(nip, nama, divisi, images,
                                    base_url=request.host_url.rstrip("/"))
+        _append_audit_log("admin_add_karyawan", {
+            "nip": nip, "nama": nama, "divisi": divisi,
+            "success": result["success"], "message": result["msg"]
+        })
         flash(result["msg"], "success" if result["success"] else "danger")
         return redirect(url_for("admin_karyawan"))
     return render_template("admin/admin_daftar.html")
 
 
-@app.route("/admin/karyawan/hapus/<nip>", methods=["POST"])
+@app.route("/admin/karyawan/hapus/<int:karyawan_id>", methods=["POST"])
 @admin_required
-def admin_hapus_karyawan(nip):
-    ok = engine.delete_karyawan(nip)
+def admin_hapus_karyawan(karyawan_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, nip, nama, divisi FROM karyawan WHERE id = %s", (karyawan_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row:
+        flash("Karyawan tidak ditemukan.", "danger")
+        return redirect(url_for("admin_karyawan"))
+
+    _, nip, nama, divisi = row
+    ok = engine.delete_karyawan(str(karyawan_id))
+    _append_audit_log("admin_delete_karyawan", {
+        "karyawan_id": karyawan_id,
+        "nip": nip,
+        "nama": nama,
+        "divisi": divisi,
+        "deleted_by": session.get("user_id"),
+        "success": ok,
+    })
     flash("Karyawan berhasil dihapus." if ok else "Gagal menghapus.", "success" if ok else "danger")
     return redirect(url_for("admin_karyawan"))
 
@@ -323,6 +360,26 @@ def admin_laporan():
     return render_template("admin/admin_laporan.html",
         data=get_absensi_range(tgl_awal, tgl_akhir),
         tgl_awal=tgl_awal, tgl_akhir=tgl_akhir)
+
+@app.route("/admin/logs")
+@admin_required
+def admin_logs():
+    from pathlib import Path
+    log_path = Path("logs") / "system.log"
+    entries = []
+    if log_path.exists():
+        try:
+            with open(log_path, encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        data = json.loads(line)
+                        entries.append(data)
+                    except Exception:
+                        continue
+        except Exception:
+            entries = []
+    entries = list(reversed(entries[-100:]))
+    return render_template("admin/admin_logs.html", entries=entries)
 
 @app.route("/admin/laporan/export")
 @admin_required
@@ -339,7 +396,6 @@ def admin_export():
             fmt = "%H:%M"
             t_in  = dt.strptime(ci, fmt)
             t_out = dt.strptime(co, fmt)
-            # Jika pulang < masuk = melewati tengah malam
             if t_out < t_in:
                 t_out += timedelta(days=1)
             total_menit = int((t_out - t_in).total_seconds() / 60)
@@ -347,6 +403,7 @@ def admin_export():
             return f"{jam}j {menit}m"
         except Exception:
             return "-"
+
     rows = get_absensi_range(tgl_awal, tgl_akhir)
 
     df = pd.DataFrame([
@@ -426,9 +483,31 @@ def admin_export():
                 max_len = max(len(str(cell.value or "")) for cell in col)
                 ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
     buf.seek(0)
+    _append_audit_log("admin_export_report", {
+        "export_from": tgl_awal,
+        "export_to": tgl_akhir,
+        "requested_by": session.get("user_id"),
+        "success": True
+    })
     return send_file(buf, as_attachment=True,
                      download_name=f"absensi_{tgl_awal}_{tgl_akhir}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.route("/admin/logs/download")
+@admin_required
+def admin_download_logs():
+    from pathlib import Path
+    log_path = Path("logs") / "system.log"
+    if not log_path.exists():
+        flash("File log belum tersedia.", "danger")
+        return redirect(url_for("admin_laporan"))
+    _append_audit_log("admin_download_logs", {
+        "requested_by": session.get("user_id"),
+        "success": True
+    })
+    return send_file(str(log_path), as_attachment=True,
+                     download_name="system.log",
+                     mimetype="text/plain")
 
 @app.route("/admin/users")
 @admin_required
@@ -447,6 +526,14 @@ def admin_tambah_user():
         flash("Email dan password wajib diisi.", "danger")
         return redirect(url_for("admin_users"))
     result = tambah_user(email, username, password, role, nip)
+    _append_audit_log("admin_add_user", {
+        "email": email,
+        "username": username,
+        "role": role,
+        "nip": nip,
+        "success": result["success"],
+        "message": result["msg"]
+    })
     flash(result["msg"], "success" if result["success"] else "danger")
     return redirect(url_for("admin_users"))
 
@@ -456,8 +543,13 @@ def admin_hapus_user(user_id):
     if user_id == session.get("user_id"):
         flash("Tidak bisa hapus akun sendiri.", "danger")
         return redirect(url_for("admin_users"))
-    hapus_user(user_id)
-    flash("User berhasil dihapus.", "success")
+    ok = hapus_user(user_id)
+    _append_audit_log("admin_delete_user", {
+        "user_id": user_id,
+        "deleted_by": session.get("user_id"),
+        "success": ok,
+    })
+    flash("User berhasil dihapus." if ok else "Gagal menghapus user.", "success" if ok else "danger")
     return redirect(url_for("admin_users"))
 
 @app.route("/admin/shift")
@@ -476,6 +568,13 @@ def admin_tambah_shift():
         melewati_tengah_malam= request.form.get("melewati_tengah_malam") == "1",
         keterangan           = request.form.get("keterangan", "").strip(),
     )
+    _append_audit_log("admin_add_shift", {
+        "nama_shift": request.form.get("nama_shift", "").strip(),
+        "jam_masuk": request.form.get("jam_masuk"),
+        "jam_pulang": request.form.get("jam_pulang"),
+        "success": r["success"],
+        "message": r["msg"]
+    })
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
 
@@ -491,6 +590,12 @@ def admin_edit_shift(shift_id):
         melewati_tengah_malam= request.form.get("melewati_tengah_malam") == "1",
         keterangan           = request.form.get("keterangan", "").strip(),
     )
+    _append_audit_log("admin_edit_shift", {
+        "shift_id": shift_id,
+        "nama_shift": request.form.get("nama_shift", "").strip(),
+        "success": r["success"],
+        "message": r["msg"]
+    })
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
 
@@ -498,6 +603,11 @@ def admin_edit_shift(shift_id):
 @admin_required
 def admin_hapus_shift(shift_id):
     r = hapus_shift(shift_id)
+    _append_audit_log("admin_delete_shift", {
+        "shift_id": shift_id,
+        "success": r["success"],
+        "message": r["msg"]
+    })
     flash(r["msg"], "success" if r["success"] else "danger")
     return redirect(url_for("admin_shift"))
 
@@ -594,11 +704,20 @@ def admin_overtime():
 @app.route('/admin/overtime/<int:req_id>/update', methods=['POST'])
 @admin_required
 def admin_update_overtime(req_id):
+    status = request.form.get('status', 'pending')
+    catatan = request.form.get('catatan', '')
     r = update_overtime_status(
         req_id,
-        request.form.get('status', 'pending'),
-        request.form.get('catatan', '')
+        status,
+        catatan
     )
+    _append_audit_log("admin_update_overtime", {
+        "request_id": req_id,
+        "status": status,
+        "catatan": catatan,
+        "updated_by": session.get("user_id"),
+        "success": r['success']
+    })
     flash(r['msg'], 'success' if r['success'] else 'danger')
     return redirect(url_for('admin_overtime'))
 
@@ -617,11 +736,20 @@ def admin_home_early():
 @app.route('/admin/home-early/<int:req_id>/update', methods=['POST'])
 @admin_required
 def admin_update_home_early(req_id):
+    status = request.form.get('status', 'pending')
+    catatan = request.form.get('catatan', '')
     r = update_home_early_status(
         req_id,
-        request.form.get('status', 'pending'),
-        request.form.get('catatan', '')
+        status,
+        catatan
     )
+    _append_audit_log("admin_update_home_early", {
+        "request_id": req_id,
+        "status": status,
+        "catatan": catatan,
+        "updated_by": session.get("user_id"),
+        "success": r['success']
+    })
     flash(r['msg'], 'success' if r['success'] else 'danger')
     return redirect(url_for('admin_home_early'))
 
