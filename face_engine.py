@@ -896,8 +896,9 @@ def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute('''
             SELECT a.tanggal, a.check_in, a.check_out, a.location,
-                   sm.nama_shift, sm.jam_masuk, sm.jam_pulang
+                   k.nip, sm.nama_shift, sm.jam_masuk, sm.jam_pulang
             FROM absensi a
+            LEFT JOIN karyawan k ON k.id = a.karyawan_id
             LEFT JOIN shift_master sm ON sm.id = a.shift_id
             WHERE a.karyawan_id = %s
             ORDER BY a.tanggal DESC, a.check_in DESC
@@ -909,6 +910,7 @@ def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
         for r in rows:
             ci = r['check_in']
             co = r['check_out']
+            nip_val = r['nip'] or str(karyawan_id)
             # hitung durasi
             if ci and co:
                 diff = int((co - ci).total_seconds())
@@ -926,6 +928,7 @@ def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
                 'nama_shift': r['nama_shift'] or '-',
                 'jam_shift':  (str(r['jam_masuk'])[:5] + '–' + str(r['jam_pulang'])[:5]) if r['jam_masuk'] else '-',
                 'location':   r['location'] or '-',
+                'nip':        nip_val,
             })
         return result
     except Exception as e:

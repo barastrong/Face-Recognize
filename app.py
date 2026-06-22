@@ -1,9 +1,10 @@
-import os, base64, io, json
+import os, base64, io, json, mimetypes
 from datetime import date, timedelta, datetime
 from functools import wraps
 import socket
 import numpy as np
 import cv2
+from pathlib import Path
 from PIL import Image
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, jsonify, flash, send_file, abort)
@@ -28,6 +29,15 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-ganti-ini")
+
+@app.route('/assets/<path:filename>')
+def serve_asset(filename):
+    safe_root = Path('templates') / 'assets'
+    asset_path = safe_root / filename
+    if not asset_path.exists() or not asset_path.is_file() or safe_root not in asset_path.parents:
+        abort(404)
+    mime_type, _ = mimetypes.guess_type(str(asset_path))
+    return send_file(str(asset_path), mimetype=mime_type or 'application/octet-stream')
 
 engine = FaceEngine()
 

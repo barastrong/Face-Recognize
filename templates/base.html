@@ -62,13 +62,16 @@
       flex-shrink: 0;
     }
     .brand-icon {
-      width: 36px; height: 36px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(108,99,255,.35);
+      width: 25px; height: 25px;
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      color: var(--accent); font-size: 17px;
       flex-shrink: 0;
+      overflow: hidden;
+      background: transparent;
+    }
+    .brand-icon img {
+      width: 100%; height: 100%; object-fit: contain;
+      display: block;
     }
     .brand-logo { font-size: .95rem; font-weight: 700; color: var(--text); line-height: 1.2; }
     .brand-sub  { font-size: .68rem; color: var(--muted); }
@@ -377,7 +380,9 @@
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <div class="brand-icon"><i class="bi bi-person-bounding-box"></i></div>
+    <div class="brand-icon">
+      <img src="{{ url_for('serve_asset', filename='Logo_Alpharich.webp') }}" alt="Alpharich Logo">
+    </div>
     <div>
       <div class="brand-logo">Face ID</div>
       <div class="brand-sub">Sistem Absensi</div>
