@@ -1,6 +1,10 @@
 insightface
 onnxruntime
-opencv-python
+# Original
+# opencv-python
+
+# Railway
+opencv-python-headless
 numpy
 flask
 flask-cors
