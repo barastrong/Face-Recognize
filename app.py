@@ -29,6 +29,7 @@ from face_engine import (
     get_lembur_rate_list, upsert_lembur_rate, hapus_lembur_rate,
     get_laporan_gaji,
     get_izin_sakit_list, tambah_izin_sakit, edit_izin_sakit, hapus_izin_sakit,
+    get_divisi_list, tambah_divisi, edit_divisi, hapus_divisi,
 )
 
 load_dotenv()
@@ -346,16 +347,17 @@ def admin_dashboard():
 @app.route("/admin/karyawan")
 @admin_required
 def admin_karyawan():
-    return render_template("admin/admin_karyawan.html", karyawan=get_karyawan_list())
+    return render_template("admin/admin_karyawan.html",
+        karyawan=get_karyawan_list(), divisi=get_divisi_list())
 
 @app.route("/admin/karyawan/daftar", methods=["GET", "POST"])
 @admin_required
 def admin_daftar_karyawan():
     if request.method == "POST":
-        nama   = request.form.get("nama", "").strip()
-        nip    = request.form.get("nip", "").strip()
-        divisi = request.form.get("divisi", "").strip()
-        photos = request.files.getlist("photos")
+        nama     = request.form.get("nama", "").strip()
+        nip      = request.form.get("nip", "").strip()
+        divisi_id = request.form.get("divisi_id", type=int)
+        photos   = request.files.getlist("photos")
         if not nama or not photos:
             flash("Nama dan foto wajib diisi.", "danger")
             return redirect(request.url)
@@ -364,29 +366,29 @@ def admin_daftar_karyawan():
         except Exception as e:
             flash(f"Gagal membaca foto: {e}", "danger")
             return redirect(request.url)
-        result = engine.register(nip, nama, divisi, images,
+        result = engine.register(nip, nama, divisi_id, images,
                                    base_url=request.host_url.rstrip("/"))
         _append_audit_log("admin_add_karyawan", {
-            "nip": nip, "nama": nama, "divisi": divisi,
+            "nip": nip, "nama": nama, "divisi_id": divisi_id,
             "success": result["success"], "message": result["msg"]
         })
         flash(result["msg"], "success" if result["success"] else "danger")
         return redirect(url_for("admin_karyawan"))
-    return render_template("admin/admin_daftar.html")
+    return render_template("admin/admin_daftar.html", divisi=get_divisi_list())
 
 
 @app.route("/admin/karyawan/edit/<int:karyawan_id>", methods=["POST"])
 @admin_required
 def admin_edit_karyawan(karyawan_id):
-    nama   = request.form.get("nama", "").strip()
-    nip    = request.form.get("nip", "").strip()
-    divisi = request.form.get("divisi", "").strip()
+    nama      = request.form.get("nama", "").strip()
+    nip       = request.form.get("nip", "").strip()
+    divisi_id = request.form.get("divisi_id", type=int)
     if not nama:
         flash("Nama wajib diisi.", "danger")
         return redirect(url_for("admin_karyawan"))
-    r = edit_karyawan(karyawan_id, nama, nip, divisi)
+    r = edit_karyawan(karyawan_id, nama, nip, divisi_id)
     _append_audit_log("admin_edit_karyawan", {
-        "karyawan_id": karyawan_id, "nama": nama, "nip": nip, "divisi": divisi,
+        "karyawan_id": karyawan_id, "nama": nama, "nip": nip, "divisi_id": divisi_id,
         "success": r["success"], "message": r["msg"]
     })
     flash(r["msg"], "success" if r["success"] else "danger")
@@ -904,19 +906,20 @@ def admin_hapus_potongan(potongan_id):
 @app.route('/admin/lembur-rate')
 @admin_required
 def admin_lembur_rate():
-    return render_template('admin/admin_lembur_rate.html', rates=get_lembur_rate_list())
+    return render_template('admin/admin_lembur_rate.html',
+        rates=get_lembur_rate_list(), divisi=get_divisi_list())
 
 
 @app.route('/admin/lembur-rate/simpan', methods=['POST'])
 @admin_required
 def admin_simpan_lembur_rate():
-    jabatan     = request.form.get('jabatan', '').strip()
+    divisi_id    = request.form.get('divisi_id', type=int)
     rate_per_jam = request.form.get('rate_per_jam', type=float)
-    keterangan  = request.form.get('keterangan', '').strip()
-    if not jabatan or rate_per_jam is None:
-        flash('Jabatan dan rate wajib diisi.', 'danger')
+    keterangan   = request.form.get('keterangan', '').strip()
+    if not divisi_id or rate_per_jam is None:
+        flash('Divisi dan rate wajib diisi.', 'danger')
         return redirect(url_for('admin_lembur_rate'))
-    r = upsert_lembur_rate(jabatan, rate_per_jam, keterangan)
+    r = upsert_lembur_rate(divisi_id, rate_per_jam, keterangan)
     flash(r['msg'], 'success' if r['success'] else 'danger')
     return redirect(url_for('admin_lembur_rate'))
 
@@ -1022,6 +1025,47 @@ def admin_hapus_izin_sakit(izin_id):
     r = hapus_izin_sakit(izin_id)
     flash(r['msg'], 'success' if r['success'] else 'danger')
     return redirect(url_for('admin_izin_sakit'))
+
+
+# ── Admin Divisi ─────────────────────────────────────────────────────────
+@app.route('/admin/divisi')
+@admin_required
+def admin_divisi():
+    return render_template('admin/admin_divisi.html', divisi=get_divisi_list())
+
+
+@app.route('/admin/divisi/tambah', methods=['POST'])
+@admin_required
+def admin_tambah_divisi():
+    nama       = request.form.get('nama', '').strip()
+    keterangan = request.form.get('keterangan', '').strip()
+    if not nama:
+        flash('Nama divisi wajib diisi.', 'danger')
+        return redirect(url_for('admin_divisi'))
+    r = tambah_divisi(nama, keterangan)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_divisi'))
+
+
+@app.route('/admin/divisi/edit/<int:divisi_id>', methods=['POST'])
+@admin_required
+def admin_edit_divisi(divisi_id):
+    nama       = request.form.get('nama', '').strip()
+    keterangan = request.form.get('keterangan', '').strip()
+    if not nama:
+        flash('Nama divisi wajib diisi.', 'danger')
+        return redirect(url_for('admin_divisi'))
+    r = edit_divisi(divisi_id, nama, keterangan)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_divisi'))
+
+
+@app.route('/admin/divisi/hapus/<int:divisi_id>', methods=['POST'])
+@admin_required
+def admin_hapus_divisi(divisi_id):
+    r = hapus_divisi(divisi_id)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_divisi'))
 
 
 if __name__ == "__main__":

@@ -5,8 +5,8 @@
 
 <div class="page-header">
   <div>
-    <h1><i class="bi bi-clock-history" style="color:var(--accent);"></i> Rate Lembur per Jabatan</h1>
-    <div class="page-sub">Atur upah lembur per jam berdasarkan jabatan/divisi</div>
+    <h1><i class="bi bi-clock-history" style="color:var(--accent);"></i> Rate Lembur per Divisi</h1>
+    <div class="page-sub">Atur upah lembur per jam berdasarkan divisi</div>
   </div>
 </div>
 
@@ -19,8 +19,19 @@
         </div>
         <form method="POST" action="{{ url_for('admin_simpan_lembur_rate') }}">
           <div class="mb-3">
-            <label class="form-label">Jabatan / Divisi *</label>
-            <input class="form-input" type="text" name="jabatan" required placeholder="cth: Staff, Manager, Supervisor">
+            <label class="form-label">Divisi *</label>
+            <select class="form-input" name="divisi_id" required>
+              <option value="">— Pilih Divisi —</option>
+              {% for d in divisi %}
+              <option value="{{ d.id }}">{{ d.nama }}</option>
+              {% endfor %}
+            </select>
+            {% if not divisi %}
+            <div style="font-size:.75rem;color:var(--amber);margin-top:5px;">
+              <i class="bi bi-exclamation-triangle"></i>
+              Belum ada divisi. <a href="{{ url_for('admin_divisi') }}" style="color:var(--accent);">Tambahkan dulu</a>
+            </div>
+            {% endif %}
           </div>
           <div class="mb-3">
             <label class="form-label">Rate per Jam (Rp) *</label>
@@ -41,8 +52,8 @@
     <div class="info-banner mt-3">
       <i class="bi bi-info-circle-fill"></i>
       <div>
-        Jabatan dicocokkan dengan kolom <strong style="color:var(--text);">Divisi</strong> karyawan (case-insensitive).
-        Jika tidak ada yang cocok, rate pertama yang tersedia akan digunakan.
+        Rate dicocokkan berdasarkan <strong style="color:var(--text);">Divisi</strong> karyawan.
+        Jika divisi karyawan tidak memiliki rate, rate pertama yang tersedia akan digunakan.
       </div>
     </div>
   </div>
@@ -56,7 +67,7 @@
         <div class="table-wrap">
           <table class="data-table">
             <thead>
-              <tr><th>No</th><th>Jabatan/Divisi</th><th>Rate/Jam</th><th>Keterangan</th><th>Diupdate</th><th>Aksi</th></tr>
+              <tr><th>No</th><th>Divisi</th><th>Rate/Jam</th><th>Keterangan</th><th>Diupdate</th><th>Aksi</th></tr>
             </thead>
             <tbody>
               {% for r in rates %}
@@ -69,7 +80,7 @@
                 <td>
                   <div class="d-flex gap-2">
                     <button type="button" class="btn-ghost btn-sm-icon"
-                      onclick="openEditRate('{{ r.jabatan|e }}','{{ r.rate_per_jam|int }}','{{ r.keterangan or '' }}')">
+                      onclick="openEditRate({{ r.divisi_id }},'{{ r.rate_per_jam|int }}','{{ r.keterangan or '' }}')">
                       <i class="bi bi-pencil"></i> Edit
                     </button>
                     <form method="POST" action="{{ url_for('admin_hapus_lembur_rate', rate_id=r.id) }}"
@@ -101,8 +112,13 @@
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">Jabatan</label>
-            <input class="form-input" type="text" name="jabatan" id="er-jabatan" readonly style="opacity:.7;">
+            <label class="form-label">Divisi *</label>
+            <select class="form-input" name="divisi_id" id="er-divisi" required>
+              <option value="">— Pilih Divisi —</option>
+              {% for d in divisi %}
+              <option value="{{ d.id }}">{{ d.nama }}</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Rate per Jam (Rp) *</label>
@@ -125,8 +141,8 @@
 {% endblock %}
 {% block scripts %}
 <script>
-function openEditRate(jabatan, rate, ket) {
-  document.getElementById('er-jabatan').value = jabatan;
+function openEditRate(divisiId, rate, ket) {
+  document.getElementById('er-divisi').value = divisiId;
   const display = document.getElementById('er-rate');
   display.value = formatRupiah(rate);
   display.nextElementSibling.value = rate;

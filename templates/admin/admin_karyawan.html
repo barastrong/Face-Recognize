@@ -17,7 +17,7 @@
   <div class="table-wrap">
     <table class="data-table">
       <thead>
-        <tr><th>No</th><th>NIP</th><th>Nama</th><th>Divisi</th><th>Terdaftar</th><th>Foto</th><th>Aksi</th></tr>
+        <tr><th>No</th><th>NIP</th><th>Nama</th><th>Divisi</th><th>Terdaftar</th><th>Aksi</th></tr>
       </thead>
       <tbody>
         {% for k in karyawan %}
@@ -28,18 +28,9 @@
           <td class="td-muted">{{ k.divisi or '–' }}</td>
           <td class="td-muted">{{ k.terdaftar[:10] if k.terdaftar else '–' }}</td>
           <td>
-            {% if k.foto_urls %}
-            <div style="display:flex;gap:4px;flex-wrap:wrap;">
-              {% for url in k.foto_urls[:3] %}
-              <img src="{{ url }}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;border:1px solid var(--border);" onerror="this.style.display='none'">
-              {% endfor %}
-            </div>
-            {% else %}<span class="td-muted">–</span>{% endif %}
-          </td>
-          <td>
             <div class="d-flex gap-2 flex-wrap">
               <button type="button" class="btn-ghost btn-sm-icon"
-                onclick="openEdit('{{ k.id }}','{{ k.nama|e }}','{{ k.nip if k.nip != '-' else '' }}','{{ k.divisi if k.divisi != '-' else '' }}')">
+                onclick="openEdit('{{ k.id }}','{{ k.nama|e }}','{{ k.nip if k.nip != '-' else '' }}','{{ k.divisi_id or '' }}')">
                 <i class="bi bi-pencil"></i> Edit
               </button>
               <form method="POST" action="{{ url_for('admin_hapus_karyawan', karyawan_id=k.id) }}"
@@ -84,7 +75,12 @@
           </div>
           <div class="mb-1">
             <label class="form-label">Divisi / Jabatan</label>
-            <input class="form-input" type="text" name="divisi" id="edit-divisi">
+            <select class="form-input" name="divisi_id" id="edit-divisi">
+              <option value="">— Pilih Divisi —</option>
+              {% for d in divisi %}
+              <option value="{{ d.id }}">{{ d.nama }}</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="mb-1" id="edit-foto-preview" style="display:none;">
             <label class="form-label">Foto Terdaftar</label>
@@ -102,10 +98,10 @@
 {% endblock %}
 {% block scripts %}
 <script>
-function openEdit(id, nama, nip, divisi) {
+function openEdit(id, nama, nip, divisiId) {
   document.getElementById('edit-nama').value = nama;
   document.getElementById('edit-nip').value = nip;
-  document.getElementById('edit-divisi').value = divisi;
+  document.getElementById('edit-divisi').value = divisiId || '';
   document.getElementById('edit-form').action = '/admin/karyawan/edit/' + id;
   // Load foto
   fetch('/api/karyawan/' + id + '/photos')

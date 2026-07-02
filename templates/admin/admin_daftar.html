@@ -30,7 +30,18 @@
         </div>
         <div class="mb-3">
           <label class="form-label">Divisi</label>
-          <input class="form-input" type="text" name="divisi" placeholder="cth: Engineering">
+          <select class="form-input" name="divisi_id">
+            <option value="">— Pilih Divisi —</option>
+            {% for d in divisi %}
+            <option value="{{ d.id }}">{{ d.nama }}</option>
+            {% endfor %}
+          </select>
+          {% if not divisi %}
+          <div style="font-size:.75rem;color:var(--amber);margin-top:5px;">
+            <i class="bi bi-exclamation-triangle"></i>
+            Belum ada divisi. <a href="{{ url_for('admin_divisi') }}" style="color:var(--accent);">Tambahkan dulu</a>
+          </div>
+          {% endif %}
         </div>
         <div class="mb-4">
           <label class="form-label">Foto Wajah (3–5 foto) *</label>

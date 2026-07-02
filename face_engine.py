@@ -206,16 +206,21 @@ def get_karyawan_list():
     try:
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(
-            'SELECT id, nip, nama, divisi, terdaftar, foto_urls FROM karyawan ORDER BY id'
-        )
+        cur.execute('''
+            SELECT k.id, k.nip, k.nama, k.divisi_id, d.nama AS divisi_nama,
+                   k.terdaftar, k.foto_urls
+            FROM karyawan k
+            LEFT JOIN divisi d ON d.id = k.divisi_id
+            ORDER BY k.id
+        ''')
         rows = cur.fetchall()
         cur.close(); conn.close()
         return [{
             "id":        str(r["id"]),
             "nip":       r["nip"] or "-",
             "nama":      r["nama"],
-            "divisi":    r["divisi"] or "-",
+            "divisi_id": r["divisi_id"],
+            "divisi":    r["divisi_nama"] or "-",
             "terdaftar": r["terdaftar"].strftime("%Y-%m-%d") if r["terdaftar"] else "",
             "foto_urls": r["foto_urls"] or [],
         } for r in rows]
@@ -223,11 +228,7 @@ def get_karyawan_list():
         print(f"[ERROR] get_karyawan_list: {e}")
         return []
 
-def register_karyawan_db(nip_input: str, nama: str, divisi: str, foto_urls: list = None) -> int:
-    """
-    Buat atau update baris karyawan di PostgreSQL.
-    Return: id karyawan (dipakai sebagai key embedding wajah).
-    """
+def register_karyawan_db(nip_input: str, nama: str, divisi_id, foto_urls: list = None) -> int:
     import json
     foto_json = json.dumps(foto_urls or [])
     conn = get_db_connection()
@@ -237,13 +238,13 @@ def register_karyawan_db(nip_input: str, nama: str, divisi: str, foto_urls: list
     if row:
         karyawan_id = row[0]
         cur.execute(
-            "UPDATE karyawan SET divisi = %s, nip = %s, foto_urls = %s WHERE id = %s",
-            (divisi, nip_input or None, foto_json, karyawan_id)
+            "UPDATE karyawan SET divisi_id = %s, nip = %s, foto_urls = %s WHERE id = %s",
+            (divisi_id or None, nip_input or None, foto_json, karyawan_id)
         )
     else:
         cur.execute(
-            "INSERT INTO karyawan (nama, nip, divisi, foto_urls) VALUES (%s, %s, %s, %s) RETURNING id",
-            (nama, nip_input or None, divisi, foto_json)
+            "INSERT INTO karyawan (nama, nip, divisi_id, foto_urls) VALUES (%s, %s, %s, %s) RETURNING id",
+            (nama, nip_input or None, divisi_id or None, foto_json)
         )
         karyawan_id = cur.fetchone()[0]
     conn.commit()
@@ -511,12 +512,13 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute('''
             SELECT
-                a.karyawan_id, a.nip, k.nama, k.divisi,
+                a.karyawan_id, a.nip, k.nama, d.nama AS divisi,
                 a.tanggal, a.check_in, a.check_out,
                 a.confidence_in, a.confidence_out, a.location,
                 sm.nama_shift, sm.jam_masuk, sm.jam_pulang, sm.toleransi_menit
             FROM absensi a
             JOIN karyawan k ON k.id = a.karyawan_id
+            LEFT JOIN divisi d ON d.id = k.divisi_id
             LEFT JOIN shift_master sm ON sm.id = a.shift_id
             WHERE a.tanggal BETWEEN %s AND %s
             ORDER BY a.tanggal DESC, a.check_in DESC
@@ -667,7 +669,7 @@ class FaceEngine:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         return out
 
-    def register(self, nip: str, nama: str, divisi: str, images: list, base_url: str = "") -> dict:
+    def register(self, nip: str, nama: str, divisi_id, images: list, base_url: str = "") -> dict:
         if self.app is None:
             return {"success": False, "msg": "Model belum dimuat"}
         vecs = []
@@ -680,13 +682,11 @@ class FaceEngine:
             return {"success": False, "msg": "Tidak ada wajah terdeteksi"}
 
         try:
-            # Daftar dulu untuk dapat karyawan_id, foto_urls diupdate setelah simpan file
-            karyawan_id = register_karyawan_db(nip, nama, divisi, [])
+            karyawan_id = register_karyawan_db(nip, nama, divisi_id, [])
             nip_key = str(karyawan_id)
         except Exception as e:
             return {"success": False, "msg": f"Gagal daftar ke database: {e}"}
 
-        # Simpan file foto
         face_dir = FACES_DIR / nip_key
         face_dir.mkdir(parents=True, exist_ok=True)
         foto_urls = []
@@ -695,8 +695,7 @@ class FaceEngine:
             cv2.imwrite(str(face_dir / filename), self._to_bgr(img))
             foto_urls.append(f"{base_url}/registered_faces/{karyawan_id}/{filename}")
 
-        # Update foto_urls di DB
-        register_karyawan_db(nip, nama, divisi, foto_urls)
+        register_karyawan_db(nip, nama, divisi_id, foto_urls)
 
         self.embeddings[nip_key] = {"nama": nama, "vecs": vecs}
         self._save_embeddings()
@@ -791,11 +790,12 @@ def get_shift_karyawan():
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute('''
-            SELECT k.id AS karyawan_id, k.nama, k.nip, k.divisi,
+            SELECT k.id AS karyawan_id, k.nama, k.nip, d.nama AS divisi,
                    sm.id AS shift_id, sm.nama_shift,
                    sm.jam_masuk, sm.jam_pulang,
                    sk.berlaku_dari, sk.berlaku_sampai
             FROM karyawan k
+            LEFT JOIN divisi d ON d.id = k.divisi_id
             LEFT JOIN shift_karyawan sk
                 ON sk.karyawan_id = k.id
                 AND sk.berlaku_dari <= CURRENT_DATE
@@ -1006,15 +1006,69 @@ def update_home_early_status(req_id: int, status: str, catatan: str = '') -> dic
         return {'success': False, 'msg': str(e)}
 
 
-# ── EDIT KARYAWAN ────────────────────────────────────────────────────────────
+# ── DIVISI ───────────────────────────────────────────────────────────────────
 
-def edit_karyawan(karyawan_id: int, nama: str, nip: str, divisi: str) -> dict:
+def get_divisi_list():
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT * FROM divisi ORDER BY nama')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_divisi_list: {e}')
+        return []
+
+
+def tambah_divisi(nama: str, keterangan: str = '') -> dict:
     try:
         conn = get_db_connection()
         cur  = conn.cursor()
         cur.execute(
-            'UPDATE karyawan SET nama=%s, nip=%s, divisi=%s WHERE id=%s',
-            (nama, nip or None, divisi or None, karyawan_id)
+            'INSERT INTO divisi (nama, keterangan) VALUES (%s, %s)',
+            (nama, keterangan or None)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f"Divisi '{nama}' berhasil ditambahkan"}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def edit_divisi(divisi_id: int, nama: str, keterangan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'UPDATE divisi SET nama=%s, keterangan=%s WHERE id=%s',
+            (nama, keterangan or None, divisi_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f"Divisi '{nama}' berhasil diupdate"}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def hapus_divisi(divisi_id: int) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('DELETE FROM divisi WHERE id=%s', (divisi_id,))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Divisi berhasil dihapus'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── EDIT KARYAWAN ────────────────────────────────────────────────────────────
+
+def edit_karyawan(karyawan_id: int, nama: str, nip: str, divisi_id) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'UPDATE karyawan SET nama=%s, nip=%s, divisi_id=%s WHERE id=%s',
+            (nama, nip or None, divisi_id or None, karyawan_id)
         )
         conn.commit(); cur.close(); conn.close()
         return {'success': True, 'msg': f"Karyawan '{nama}' berhasil diupdate"}
@@ -1053,9 +1107,10 @@ def get_gaji_list():
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute('''
-            SELECT g.id, g.karyawan_id, k.nama, k.nip, k.divisi, g.gaji_harian, g.diupdate
+            SELECT g.id, g.karyawan_id, k.nama, k.nip, d.nama AS divisi, g.gaji_harian, g.diupdate
             FROM gaji_pokok g
             JOIN karyawan k ON k.id = g.karyawan_id
+            LEFT JOIN divisi d ON d.id = k.divisi_id
             ORDER BY k.nama
         ''')
         rows = [dict(r) for r in cur.fetchall()]
@@ -1141,7 +1196,12 @@ def get_lembur_rate_list():
     try:
         conn = get_db_connection()
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute('SELECT * FROM lembur_rate ORDER BY jabatan')
+        cur.execute('''
+            SELECT lr.id, lr.divisi_id, d.nama AS jabatan, lr.rate_per_jam, lr.keterangan, lr.diupdate
+            FROM lembur_rate lr
+            JOIN divisi d ON d.id = lr.divisi_id
+            ORDER BY d.nama
+        ''')
         rows = [dict(r) for r in cur.fetchall()]
         cur.close(); conn.close()
         return rows
@@ -1150,18 +1210,18 @@ def get_lembur_rate_list():
         return []
 
 
-def upsert_lembur_rate(jabatan: str, rate_per_jam: float, keterangan: str = '') -> dict:
+def upsert_lembur_rate(divisi_id: int, rate_per_jam: float, keterangan: str = '') -> dict:
     try:
         conn = get_db_connection()
         cur  = conn.cursor()
         cur.execute('''
-            INSERT INTO lembur_rate (jabatan, rate_per_jam, keterangan)
+            INSERT INTO lembur_rate (divisi_id, rate_per_jam, keterangan)
             VALUES (%s, %s, %s)
-            ON CONFLICT (jabatan)
+            ON CONFLICT (divisi_id)
             DO UPDATE SET rate_per_jam=EXCLUDED.rate_per_jam, keterangan=EXCLUDED.keterangan, diupdate=NOW()
-        ''', (jabatan, rate_per_jam, keterangan))
+        ''', (divisi_id, rate_per_jam, keterangan))
         conn.commit(); cur.close(); conn.close()
-        return {'success': True, 'msg': f"Rate lembur '{jabatan}' berhasil disimpan"}
+        return {'success': True, 'msg': 'Rate lembur berhasil disimpan'}
     except Exception as e:
         return {'success': False, 'msg': str(e)}
 
@@ -1192,11 +1252,12 @@ def get_laporan_gaji(tgl_awal: str, tgl_akhir: str) -> list:
 
         # Ambil semua absensi dalam range
         cur.execute('''
-            SELECT a.karyawan_id, k.nama, k.nip, k.divisi,
+            SELECT a.karyawan_id, k.nama, k.nip, k.divisi_id, d.nama AS divisi,
                    a.tanggal, a.check_in, a.check_out,
                    sm.jam_masuk, sm.jam_pulang, sm.toleransi_menit
             FROM absensi a
             JOIN karyawan k ON k.id = a.karyawan_id
+            LEFT JOIN divisi d ON d.id = k.divisi_id
             LEFT JOIN shift_master sm ON sm.id = a.shift_id
             WHERE a.tanggal BETWEEN %s AND %s
             ORDER BY a.karyawan_id, a.tanggal
@@ -1231,9 +1292,9 @@ def get_laporan_gaji(tgl_awal: str, tgl_akhir: str) -> list:
         pot_terlambat   = pot_map.get('terlambat', 0)
         pot_lupa_absen  = pot_map.get('lupa_absen', 0)
 
-        # Ambil lembur rate
-        cur.execute('SELECT jabatan, rate_per_jam FROM lembur_rate')
-        lembur_map = {r['jabatan'].lower(): float(r['rate_per_jam']) for r in cur.fetchall()}
+        # Ambil lembur rate — key by divisi_id
+        cur.execute('SELECT divisi_id, rate_per_jam FROM lembur_rate')
+        lembur_map = {r['divisi_id']: float(r['rate_per_jam']) for r in cur.fetchall()}
 
         cur.close(); conn.close()
 
@@ -1258,7 +1319,8 @@ def get_laporan_gaji(tgl_awal: str, tgl_akhir: str) -> list:
             kid = r['karyawan_id']
             if kid not in kar_map:
                 kar_map[kid] = {
-                    'nama': r['nama'], 'nip': r['nip'], 'divisi': r['divisi'] or '-',
+                    'nama': r['nama'], 'nip': r['nip'],
+                    'divisi': r['divisi'] or '-', 'divisi_id': r['divisi_id'],
                     'masuk': 0, 'lupa_absen': 0, 'terlambat': 0,
                 }
             ci = r['check_in']
@@ -1281,8 +1343,7 @@ def get_laporan_gaji(tgl_awal: str, tgl_akhir: str) -> list:
         for i, (kid, d) in enumerate(sorted(kar_map.items(), key=lambda x: x[1]['nama'])):
             gaji_harian  = gaji_map.get(kid, 0)
             lembur_jam   = round(ot_per_kar.get(kid, 0), 2)
-            divisi_lower = d['divisi'].lower()
-            rate_lembur  = lembur_map.get(divisi_lower, list(lembur_map.values())[0] if lembur_map else 0)
+            rate_lembur  = lembur_map.get(d['divisi_id'], list(lembur_map.values())[0] if lembur_map else 0)
 
             izin_sakit_count = izin_map.get(kid, 0)
             gaji_kotor        = gaji_harian * d['masuk']
@@ -1323,23 +1384,26 @@ def get_izin_sakit_list(karyawan_id: int = None, tgl_awal: str = None, tgl_akhir
         cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         if karyawan_id:
             cur.execute('''
-                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, k.divisi,
+                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, d.nama AS divisi,
                        iz.tanggal, iz.jenis, iz.keterangan, iz.dibuat
                 FROM izin_sakit iz JOIN karyawan k ON k.id = iz.karyawan_id
+                LEFT JOIN divisi d ON d.id = k.divisi_id
                 WHERE iz.karyawan_id = %s ORDER BY iz.tanggal DESC
             ''', (karyawan_id,))
         elif tgl_awal and tgl_akhir:
             cur.execute('''
-                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, k.divisi,
+                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, d.nama AS divisi,
                        iz.tanggal, iz.jenis, iz.keterangan, iz.dibuat
                 FROM izin_sakit iz JOIN karyawan k ON k.id = iz.karyawan_id
+                LEFT JOIN divisi d ON d.id = k.divisi_id
                 WHERE iz.tanggal BETWEEN %s AND %s ORDER BY iz.tanggal DESC
             ''', (tgl_awal, tgl_akhir))
         else:
             cur.execute('''
-                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, k.divisi,
+                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, d.nama AS divisi,
                        iz.tanggal, iz.jenis, iz.keterangan, iz.dibuat
                 FROM izin_sakit iz JOIN karyawan k ON k.id = iz.karyawan_id
+                LEFT JOIN divisi d ON d.id = k.divisi_id
                 ORDER BY iz.tanggal DESC
             ''')
         rows = [dict(r) for r in cur.fetchall()]
