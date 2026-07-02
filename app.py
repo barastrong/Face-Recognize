@@ -22,7 +22,13 @@ from face_engine import (
     buat_overtime_request, get_overtime_requests, update_overtime_status,
     buat_home_early_request, get_home_early_requests, update_home_early_status,
     get_shift_aktif_karyawan, get_db_connection,
-    _append_audit_log
+    _append_audit_log,
+    edit_karyawan, edit_user,
+    get_gaji_list, upsert_gaji, hapus_gaji,
+    get_potongan_list, upsert_potongan, hapus_potongan,
+    get_lembur_rate_list, upsert_lembur_rate, hapus_lembur_rate,
+    get_laporan_gaji,
+    get_izin_sakit_list, tambah_izin_sakit, edit_izin_sakit, hapus_izin_sakit,
 )
 
 load_dotenv()
@@ -299,9 +305,43 @@ def admin_dashboard():
     karyawan         = get_karyawan_list()
     n_masuk  = sum(1 for a in absensi_hari_ini if a["tipe"] == "masuk")
     n_pulang = sum(1 for a in absensi_hari_ini if a["tipe"] == "pulang")
+
+    # Data 7 hari terakhir untuk grafik
+    import json as _json
+    labels_7 = []
+    data_masuk_7 = []
+    data_izin_7  = []
+    for i in range(6, -1, -1):
+        d = date.today() - timedelta(days=i)
+        rows = get_absensi_range(d.isoformat(), d.isoformat())
+        labels_7.append(d.strftime('%d/%m'))
+        data_masuk_7.append(len(rows))
+        izin = get_izin_sakit_list(tgl_awal=d.isoformat(), tgl_akhir=d.isoformat())
+        data_izin_7.append(len(izin))
+
+    # Rekap per divisi hari ini
+    divisi_count = {}
+    seen_nips = set()
+    for a in absensi_hari_ini:
+        if a['tipe'] == 'masuk' and a['nip'] not in seen_nips:
+            seen_nips.add(a['nip'])
+            div = next((k['divisi'] for k in karyawan if k['nip'] == a['nip']), '-')
+            divisi_count[div] = divisi_count.get(div, 0) + 1
+
+    # Pending requests
+    ot_pending = sum(1 for r in get_overtime_requests() if r['status'] == 'pending')
+    he_pending = sum(1 for r in get_home_early_requests() if r['status'] == 'pending')
+
     return render_template("admin/admin_dashboard.html",
         absensi=absensi_hari_ini, karyawan=karyawan,
-        n_masuk=n_masuk, n_pulang=n_pulang, total_karyawan=len(karyawan))
+        n_masuk=n_masuk, n_pulang=n_pulang, total_karyawan=len(karyawan),
+        ot_pending=ot_pending, he_pending=he_pending,
+        chart_labels=_json.dumps(labels_7),
+        chart_masuk=_json.dumps(data_masuk_7),
+        chart_izin=_json.dumps(data_izin_7),
+        chart_divisi_labels=_json.dumps(list(divisi_count.keys())),
+        chart_divisi_data=_json.dumps(list(divisi_count.values())),
+    )
 
 @app.route("/admin/karyawan")
 @admin_required
@@ -333,6 +373,24 @@ def admin_daftar_karyawan():
         flash(result["msg"], "success" if result["success"] else "danger")
         return redirect(url_for("admin_karyawan"))
     return render_template("admin/admin_daftar.html")
+
+
+@app.route("/admin/karyawan/edit/<int:karyawan_id>", methods=["POST"])
+@admin_required
+def admin_edit_karyawan(karyawan_id):
+    nama   = request.form.get("nama", "").strip()
+    nip    = request.form.get("nip", "").strip()
+    divisi = request.form.get("divisi", "").strip()
+    if not nama:
+        flash("Nama wajib diisi.", "danger")
+        return redirect(url_for("admin_karyawan"))
+    r = edit_karyawan(karyawan_id, nama, nip, divisi)
+    _append_audit_log("admin_edit_karyawan", {
+        "karyawan_id": karyawan_id, "nama": nama, "nip": nip, "divisi": divisi,
+        "success": r["success"], "message": r["msg"]
+    })
+    flash(r["msg"], "success" if r["success"] else "danger")
+    return redirect(url_for("admin_karyawan"))
 
 
 @app.route("/admin/karyawan/hapus/<int:karyawan_id>", methods=["POST"])
@@ -546,6 +604,26 @@ def admin_tambah_user():
     })
     flash(result["msg"], "success" if result["success"] else "danger")
     return redirect(url_for("admin_users"))
+
+@app.route("/admin/users/edit/<int:user_id>", methods=["POST"])
+@admin_required
+def admin_edit_user(user_id):
+    email    = request.form.get("email", "").strip().lower()
+    username = request.form.get("username", "").strip()
+    role     = request.form.get("role", "karyawan")
+    nip      = request.form.get("nip", "").strip() or None
+    password = request.form.get("password", "").strip() or None
+    if not email:
+        flash("Email wajib diisi.", "danger")
+        return redirect(url_for("admin_users"))
+    r = edit_user(user_id, email, username, role, nip, password)
+    _append_audit_log("admin_edit_user", {
+        "user_id": user_id, "email": email, "role": role,
+        "success": r["success"], "message": r["msg"]
+    })
+    flash(r["msg"], "success" if r["success"] else "danger")
+    return redirect(url_for("admin_users"))
+
 
 @app.route("/admin/users/hapus/<int:user_id>", methods=["POST"])
 @admin_required
@@ -762,6 +840,188 @@ def admin_update_home_early(req_id):
     })
     flash(r['msg'], 'success' if r['success'] else 'danger')
     return redirect(url_for('admin_home_early'))
+
+
+# ── Admin Gaji Pokok ─────────────────────────────────────────────────────────
+@app.route('/admin/gaji')
+@admin_required
+def admin_gaji():
+    return render_template('admin/admin_gaji.html',
+        gaji_list=get_gaji_list(), karyawan=get_karyawan_list())
+
+
+@app.route('/admin/gaji/simpan', methods=['POST'])
+@admin_required
+def admin_simpan_gaji():
+    karyawan_id = request.form.get('karyawan_id', type=int)
+    gaji_harian = request.form.get('gaji_harian', type=float)
+    if not karyawan_id or gaji_harian is None:
+        flash('Data tidak lengkap.', 'danger')
+        return redirect(url_for('admin_gaji'))
+    r = upsert_gaji(karyawan_id, gaji_harian)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_gaji'))
+
+
+@app.route('/admin/gaji/hapus/<int:gaji_id>', methods=['POST'])
+@admin_required
+def admin_hapus_gaji(gaji_id):
+    r = hapus_gaji(gaji_id)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_gaji'))
+
+
+# ── Admin Potongan Config ─────────────────────────────────────────────────────
+@app.route('/admin/potongan')
+@admin_required
+def admin_potongan():
+    return render_template('admin/admin_potongan.html', potongan=get_potongan_list())
+
+
+@app.route('/admin/potongan/simpan', methods=['POST'])
+@admin_required
+def admin_simpan_potongan():
+    jenis      = request.form.get('jenis', '').strip()
+    nominal    = request.form.get('nominal', type=float)
+    keterangan = request.form.get('keterangan', '').strip()
+    if not jenis or nominal is None:
+        flash('Jenis dan nominal wajib diisi.', 'danger')
+        return redirect(url_for('admin_potongan'))
+    r = upsert_potongan(jenis, nominal, keterangan)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_potongan'))
+
+
+@app.route('/admin/potongan/hapus/<int:potongan_id>', methods=['POST'])
+@admin_required
+def admin_hapus_potongan(potongan_id):
+    r = hapus_potongan(potongan_id)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_potongan'))
+
+
+# ── Admin Lembur Rate ─────────────────────────────────────────────────────────
+@app.route('/admin/lembur-rate')
+@admin_required
+def admin_lembur_rate():
+    return render_template('admin/admin_lembur_rate.html', rates=get_lembur_rate_list())
+
+
+@app.route('/admin/lembur-rate/simpan', methods=['POST'])
+@admin_required
+def admin_simpan_lembur_rate():
+    jabatan     = request.form.get('jabatan', '').strip()
+    rate_per_jam = request.form.get('rate_per_jam', type=float)
+    keterangan  = request.form.get('keterangan', '').strip()
+    if not jabatan or rate_per_jam is None:
+        flash('Jabatan dan rate wajib diisi.', 'danger')
+        return redirect(url_for('admin_lembur_rate'))
+    r = upsert_lembur_rate(jabatan, rate_per_jam, keterangan)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_lembur_rate'))
+
+
+@app.route('/admin/lembur-rate/hapus/<int:rate_id>', methods=['POST'])
+@admin_required
+def admin_hapus_lembur_rate(rate_id):
+    r = hapus_lembur_rate(rate_id)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_lembur_rate'))
+
+
+# ── Admin Laporan Gaji ────────────────────────────────────────────────────────
+@app.route('/admin/laporan-gaji')
+@admin_required
+def admin_laporan_gaji():
+    tgl_awal  = request.args.get('dari',   (date.today().replace(day=1)).isoformat())
+    tgl_akhir = request.args.get('sampai', date.today().isoformat())
+    data = get_laporan_gaji(tgl_awal, tgl_akhir)
+    return render_template('admin/admin_laporan_gaji.html',
+        data=data, tgl_awal=tgl_awal, tgl_akhir=tgl_akhir)
+
+
+@app.route('/admin/laporan-gaji/export')
+@admin_required
+def admin_export_gaji():
+    tgl_awal  = request.args.get('dari',   (date.today().replace(day=1)).isoformat())
+    tgl_akhir = request.args.get('sampai', date.today().isoformat())
+    data = get_laporan_gaji(tgl_awal, tgl_akhir)
+    df = pd.DataFrame([{
+        'No':                   d['no'],
+        'Nama Karyawan':        d['nama'],
+        'Divisi/Jabatan':       d['divisi'],
+        'Gaji Pokok/Hari':      d['gaji_harian'],
+        'Masuk':                d['masuk'],
+        'Izin/Sakit':           d['izin_sakit'],
+        'Lupa Absen':           d['lupa_absen'],
+        'Telat/Pulang Cepat':   d['terlambat'],
+        'Lembur (Jam)':         d['lembur_jam'],
+        'Gaji Kotor':           d['gaji_kotor'],
+        'Potongan Lupa Absen':  d['potongan_lupa'],
+        'Potongan Terlambat':   d['potongan_terlambat'],
+        'Lembur':               d['bonus_lembur'],
+        'Total Terima':         d['total_terima'],
+    } for d in data])
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Laporan Gaji')
+        ws = writer.sheets['Laporan Gaji']
+        for col in ws.columns:
+            ws.column_dimensions[col[0].column_letter].width = min(
+                max(len(str(c.value or '')) for c in col) + 4, 40)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True,
+                     download_name=f'gaji_{tgl_awal}_{tgl_akhir}.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ── Admin Izin Sakit ───────────────────────────────────────────────────────────────
+@app.route('/admin/izin-sakit')
+@admin_required
+def admin_izin_sakit():
+    tgl_awal  = request.args.get('dari',   (date.today() - timedelta(days=30)).isoformat())
+    tgl_akhir = request.args.get('sampai', date.today().isoformat())
+    data = get_izin_sakit_list(tgl_awal=tgl_awal, tgl_akhir=tgl_akhir)
+    return render_template('admin/admin_izin_sakit.html',
+        data=data, karyawan=get_karyawan_list(),
+        tgl_awal=tgl_awal, tgl_akhir=tgl_akhir)
+
+
+@app.route('/admin/izin-sakit/tambah', methods=['POST'])
+@admin_required
+def admin_tambah_izin_sakit():
+    karyawan_id = request.form.get('karyawan_id', type=int)
+    tanggal     = request.form.get('tanggal', '').strip()
+    jenis       = request.form.get('jenis', 'izin').strip()
+    keterangan  = request.form.get('keterangan', '').strip()
+    if not karyawan_id or not tanggal:
+        flash('Karyawan dan tanggal wajib diisi.', 'danger')
+        return redirect(url_for('admin_izin_sakit'))
+    r = tambah_izin_sakit(karyawan_id, tanggal, jenis, keterangan)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_izin_sakit'))
+
+
+@app.route('/admin/izin-sakit/edit/<int:izin_id>', methods=['POST'])
+@admin_required
+def admin_edit_izin_sakit(izin_id):
+    tanggal    = request.form.get('tanggal', '').strip()
+    jenis      = request.form.get('jenis', 'izin').strip()
+    keterangan = request.form.get('keterangan', '').strip()
+    if not tanggal:
+        flash('Tanggal wajib diisi.', 'danger')
+        return redirect(url_for('admin_izin_sakit'))
+    r = edit_izin_sakit(izin_id, tanggal, jenis, keterangan)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_izin_sakit'))
+
+
+@app.route('/admin/izin-sakit/hapus/<int:izin_id>', methods=['POST'])
+@admin_required
+def admin_hapus_izin_sakit(izin_id):
+    r = hapus_izin_sakit(izin_id)
+    flash(r['msg'], 'success' if r['success'] else 'danger')
+    return redirect(url_for('admin_izin_sakit'))
 
 
 if __name__ == "__main__":

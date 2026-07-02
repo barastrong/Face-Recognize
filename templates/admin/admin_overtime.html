@@ -10,7 +10,7 @@
   </div>
 </div>
 
-{% set n_pending  = data | selectattr('status','eq','pending')  | list | length %}
+{% set n_pending = data | selectattr('status','eq','pending') | list | length %}
 {% set n_approved = data | selectattr('status','eq','approved') | list | length %}
 {% set n_rejected = data | selectattr('status','eq','rejected') | list | length %}
 
@@ -43,10 +43,14 @@
     <div class="card-header-custom flex-wrap gap-2">
       <div class="card-title-text"><i class="bi bi-table"></i> Semua Permintaan</div>
       <div class="d-flex gap-2 flex-wrap">
-        <a href="?status=" class="btn-sm-icon text-decoration-none {% if not status %}btn-accent{% else %}btn-ghost{% endif %}">Semua</a>
-        <a href="?status=pending" class="btn-sm-icon text-decoration-none {% if status=='pending' %}btn-accent{% else %}btn-ghost{% endif %}">Menunggu</a>
-        <a href="?status=approved" class="btn-sm-icon text-decoration-none {% if status=='approved' %}btn-accent{% else %}btn-ghost{% endif %}">Disetujui</a>
-        <a href="?status=rejected" class="btn-sm-icon text-decoration-none {% if status=='rejected' %}btn-accent{% else %}btn-ghost{% endif %}">Ditolak</a>
+        <a href="?status="
+          class="btn-sm-icon text-decoration-none {% if not status %}btn-accent{% else %}btn-ghost{% endif %}">Semua</a>
+        <a href="?status=pending"
+          class="btn-sm-icon text-decoration-none {% if status=='pending' %}btn-accent{% else %}btn-ghost{% endif %}">Menunggu</a>
+        <a href="?status=approved"
+          class="btn-sm-icon text-decoration-none {% if status=='approved' %}btn-accent{% else %}btn-ghost{% endif %}">Disetujui</a>
+        <a href="?status=rejected"
+          class="btn-sm-icon text-decoration-none {% if status=='rejected' %}btn-accent{% else %}btn-ghost{% endif %}">Ditolak</a>
       </div>
     </div>
 
@@ -74,23 +78,24 @@
             <td style="white-space:nowrap;">{{ r.tanggal }}</td>
             <td style="white-space:nowrap;font-size:.82rem;">{{ r.jam_mulai }} – {{ r.jam_selesai }}</td>
             <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                title="{{ r.alasan }}">{{ r.alasan }}</td>
+              title="{{ r.alasan }}">{{ r.alasan }}</td>
             <td class="td-muted" style="white-space:nowrap;">{{ r.dibuat }}</td>
             <td>
               {% if r.status == 'approved' %}
-                <span class="status-badge badge-masuk">Disetujui</span>
+              <span class="status-badge badge-masuk">Disetujui</span>
               {% elif r.status == 'rejected' %}
-                <span class="status-badge" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">Ditolak</span>
+              <span class="status-badge"
+                style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">Ditolak</span>
               {% else %}
-                <span class="status-badge badge-karyawan">Menunggu</span>
+              <span class="status-badge badge-karyawan">Menunggu</span>
               {% endif %}
               {% if r.catatan_admin %}
-                <div style="font-size:.72rem;color:var(--muted);margin-top:3px;">{{ r.catatan_admin }}</div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:3px;">{{ r.catatan_admin }}</div>
               {% endif %}
             </td>
             <td>
               <button type="button" class="btn-ghost btn-sm-icon"
-                      onclick="openReview({{ r.id }}, '{{ r.nama|e }}', '{{ r.tanggal }}', '{{ r.jam_mulai }} - {{ r.jam_selesai }}')">
+                onclick="openReview({{ r.id }}, '{{ r.nama|e }}', '{{ r.tanggal }}', '{{ r.jam_mulai }} - {{ r.jam_selesai }}')">
                 <i class="bi bi-pencil"></i> {% if r.status == 'pending' %}Review{% else %}Ubah{% endif %}
               </button>
             </td>

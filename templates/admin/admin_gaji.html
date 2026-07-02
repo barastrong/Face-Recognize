@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Gaji Pokok · Face ID{% endblock %}
+{% block title_short %}<i class="bi bi-cash-stack me-1"></i> Gaji Pokok{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-cash-stack" style="color:var(--accent);"></i> Gaji Pokok Karyawan</h1>
+    <div class="page-sub">Atur gaji harian per karyawan</div>
+  </div>
+</div>
+
+<div class="row g-3 align-items-start">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="card-header-custom">
+          <div class="card-title-text"><i class="bi bi-plus-circle"></i> Tambah / Edit Gaji</div>
+        </div>
+        <form method="POST" action="{{ url_for('admin_simpan_gaji') }}">
+          <div class="mb-3">
+            <label class="form-label">Karyawan *</label>
+            <select class="form-input" name="karyawan_id" required>
+              <option value="">— Pilih karyawan —</option>
+              {% for k in karyawan %}
+              <option value="{{ k.id }}">{{ k.nama }}{% if k.divisi != '-' %} ({{ k.divisi }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Gaji Harian (Rp) *</label>
+            <input class="form-input rupiah-input" type="text" inputmode="numeric" placeholder="cth: 150.000" autocomplete="off">
+            <input type="hidden" name="gaji_harian" class="rupiah-raw">
+          </div>
+          <button class="btn-accent w-100 justify-content-center" type="submit">
+            <i class="bi bi-save"></i> Simpan
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="card-header-custom">
+          <div class="card-title-text"><i class="bi bi-table"></i> Daftar Gaji Pokok</div>
+          <span style="font-size:.8rem;color:var(--muted);">{{ gaji_list|length }} data</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>No</th><th>Nama</th><th>NIP</th><th>Divisi/Jabatan</th><th>Gaji Harian</th><th>Diupdate</th><th>Aksi</th></tr>
+            </thead>
+            <tbody>
+              {% for g in gaji_list %}
+              <tr>
+                <td class="td-muted">{{ loop.index }}</td>
+                <td><strong>{{ g.nama }}</strong></td>
+                <td class="td-muted">{{ g.nip or '–' }}</td>
+                <td class="td-muted">{{ g.divisi or '–' }}</td>
+                <td><strong>Rp {{ "{:,.0f}".format(g.gaji_harian) }}</strong></td>
+                <td class="td-muted" style="font-size:.78rem;">{{ g.diupdate.strftime('%Y-%m-%d') if g.diupdate else '–' }}</td>
+                <td>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn-ghost btn-sm-icon"
+                      onclick="openEditGaji('{{ g.karyawan_id }}','{{ g.gaji_harian|int }}')">
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <form method="POST" action="{{ url_for('admin_hapus_gaji', gaji_id=g.id) }}"
+                          onsubmit="return confirm('Hapus gaji {{ g.nama }}?')" style="margin:0;">
+                      <button class="btn-danger-soft btn-sm-icon" type="submit"><i class="bi bi-trash3"></i></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px;">Belum ada data gaji.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div class="modal fade" id="modalEditGaji" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('admin_simpan_gaji') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil c-accent"></i> Edit Gaji</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="karyawan_id" id="eg-kid">
+          <div class="mb-1">
+            <label class="form-label">Gaji Harian (Rp) *</label>
+            <input class="form-input rupiah-input" type="text" inputmode="numeric" id="eg-gaji" placeholder="cth: 150.000" autocomplete="off">
+            <input type="hidden" name="gaji_harian" class="rupiah-raw">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn-accent"><i class="bi bi-save"></i> Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function openEditGaji(kid, gaji) {
+  document.getElementById('eg-kid').value = kid;
+  const display = document.getElementById('eg-gaji');
+  display.value = formatRupiah(gaji);
+  display.nextElementSibling.value = gaji;
+  new bootstrap.Modal(document.getElementById('modalEditGaji')).show();
+}
+</script>
+{% endblock %}

@@ -37,30 +37,27 @@
           {% for s in shifts %}
           <tr>
             <td><strong>{{ s.nama_shift }}</strong></td>
-            <td><span class="status-badge badge-masuk"><i class="bi bi-box-arrow-in-right"></i> {{ s.jam_masuk }}</span></td>
-            <td><span class="status-badge badge-pulang"><i class="bi bi-box-arrow-right"></i> {{ s.jam_pulang }}</span></td>
+            <td><span class="status-badge badge-masuk"><i class="bi bi-box-arrow-in-right"></i> {{ s.jam_masuk }}</span>
+            </td>
+            <td><span class="status-badge badge-pulang"><i class="bi bi-box-arrow-right"></i> {{ s.jam_pulang }}</span>
+            </td>
             <td class="td-muted">{{ s.toleransi_menit }} menit</td>
             <td>
               {% if s.melewati_tengah_malam %}
-                <span class="status-badge badge-admin">Ya</span>
+              <span class="status-badge badge-admin">Ya</span>
               {% else %}<span class="td-muted">–</span>{% endif %}
             </td>
             <td class="td-muted">{{ s.keterangan or '–' }}</td>
             <td>
               <div class="d-flex gap-2 flex-wrap">
-                <button type="button" class="btn-ghost btn-sm-icon"
-                  data-id="{{ s.id }}"
-                  data-nama="{{ s.nama_shift }}"
-                  data-masuk="{{ s.jam_masuk }}"
-                  data-pulang="{{ s.jam_pulang }}"
-                  data-toleransi="{{ s.toleransi_menit }}"
-                  data-malam="{{ '1' if s.melewati_tengah_malam else '0' }}"
-                  data-ket="{{ s.keterangan or '' }}"
-                  onclick="openEditShift(this)">
+                <button type="button" class="btn-ghost btn-sm-icon" data-id="{{ s.id }}" data-nama="{{ s.nama_shift }}"
+                  data-masuk="{{ s.jam_masuk }}" data-pulang="{{ s.jam_pulang }}"
+                  data-toleransi="{{ s.toleransi_menit }}" data-malam="{{ '1' if s.melewati_tengah_malam else '0' }}"
+                  data-ket="{{ s.keterangan or '' }}" onclick="openEditShift(this)">
                   <i class="bi bi-pencil"></i> Edit
                 </button>
                 <form method="POST" action="{{ url_for('admin_hapus_shift', shift_id=s.id) }}"
-                      onsubmit="return confirm('Hapus shift {{ s.nama_shift }}?')" class="d-inline m-0">
+                  onsubmit="return confirm('Hapus shift {{ s.nama_shift }}?')" class="d-inline m-0">
                   <button class="btn-danger-soft btn-sm-icon" type="submit">
                     <i class="bi bi-trash3"></i> Hapus
                   </button>
@@ -72,7 +69,8 @@
           <tr>
             <td colspan="7" class="text-center" style="color:var(--muted);padding:32px;">
               Belum ada shift.
-              <button class="btn-accent btn-sm-icon ms-2" type="button" data-bs-toggle="modal" data-bs-target="#modalTambahShift">Tambah sekarang</button>
+              <button class="btn-accent btn-sm-icon ms-2" type="button" data-bs-toggle="modal"
+                data-bs-target="#modalTambahShift">Tambah sekarang</button>
             </td>
           </tr>
           {% endfor %}
@@ -209,12 +207,12 @@
 <script>
   function openEditShift(btn) {
     document.getElementById('formEditShift').action = '/admin/shift/edit/' + btn.dataset.id;
-    document.getElementById('editNama').value      = btn.dataset.nama;
-    document.getElementById('editMasuk').value     = btn.dataset.masuk;
-    document.getElementById('editPulang').value    = btn.dataset.pulang;
+    document.getElementById('editNama').value = btn.dataset.nama;
+    document.getElementById('editMasuk').value = btn.dataset.masuk;
+    document.getElementById('editPulang').value = btn.dataset.pulang;
     document.getElementById('editToleransi').value = btn.dataset.toleransi;
-    document.getElementById('editMalam').value     = btn.dataset.malam;
-    document.getElementById('editKet').value       = btn.dataset.ket;
+    document.getElementById('editMalam').value = btn.dataset.malam;
+    document.getElementById('editKet').value = btn.dataset.ket;
     var modal = new bootstrap.Modal(document.getElementById('modalEditShift'));
     modal.show();
   }

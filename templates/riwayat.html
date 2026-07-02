@@ -20,7 +20,7 @@
 
 {% set total     = riwayat | length %}
 {% set n_selesai = riwayat | selectattr('check_out', 'ne', '-') | list | length %}
-{% set n_proses  = total - n_selesai %}
+{% set n_lupa    = riwayat | selectattr('status_absen', 'equalto', 'Lupa Absen') | list | length %}
 
 <div class="row g-3 mb-4">
   <div class="col-12 col-sm-4">
@@ -39,9 +39,9 @@
   </div>
   <div class="col-12 col-sm-4">
     <div class="card metric-card">
-      <div class="metric-icon bg-amber-soft"><i class="bi bi-clock"></i></div>
-      <div class="metric-num c-amber">{{ n_proses }}</div>
-      <div class="metric-lbl">Belum Checkout</div>
+      <div class="metric-icon bg-red-soft"><i class="bi bi-exclamation-circle"></i></div>
+      <div class="metric-num c-red">{{ n_lupa }}</div>
+      <div class="metric-lbl">Lupa Absen</div>
     </div>
   </div>
 </div>
@@ -61,6 +61,7 @@
           <th>Check In</th>
           <th>Check Out</th>
           <th>Durasi</th>
+          <th>Status</th>
           <th>Lokasi</th>
         </tr>
       </thead>
@@ -107,6 +108,15 @@
           <td class="td-muted" style="font-size:.77rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
               title="{{ r.location }}">
             {{ r.location if r.location != '-' else '–' }}
+          </td>
+          <td>
+            {% if r.status_absen == 'Lupa Absen' %}
+              <span class="status-badge" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">Lupa Absen</span>
+            {% elif r.status_absen == 'Selesai' %}
+              <span class="status-badge bg-green-soft" style="border:1px solid rgba(34,197,94,.25);">Selesai</span>
+            {% else %}
+              <span class="status-badge badge-karyawan">{{ r.status_absen }}</span>
+            {% endif %}
           </td>
         </tr>
         {% else %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Rate Lembur · Face ID{% endblock %}
+{% block title_short %}<i class="bi bi-clock-history me-1"></i> Rate Lembur{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-clock-history" style="color:var(--accent);"></i> Rate Lembur per Jabatan</h1>
+    <div class="page-sub">Atur upah lembur per jam berdasarkan jabatan/divisi</div>
+  </div>
+</div>
+
+<div class="row g-3 align-items-start">
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="card-header-custom">
+          <div class="card-title-text"><i class="bi bi-plus-circle"></i> Tambah / Edit Rate</div>
+        </div>
+        <form method="POST" action="{{ url_for('admin_simpan_lembur_rate') }}">
+          <div class="mb-3">
+            <label class="form-label">Jabatan / Divisi *</label>
+            <input class="form-input" type="text" name="jabatan" required placeholder="cth: Staff, Manager, Supervisor">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Rate per Jam (Rp) *</label>
+            <input class="form-input rupiah-input" type="text" inputmode="numeric" placeholder="cth: 25.000" autocomplete="off">
+            <input type="hidden" name="rate_per_jam" class="rupiah-raw">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Keterangan</label>
+            <input class="form-input" type="text" name="keterangan" placeholder="opsional">
+          </div>
+          <button class="btn-accent w-100 justify-content-center" type="submit">
+            <i class="bi bi-save"></i> Simpan
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="info-banner mt-3">
+      <i class="bi bi-info-circle-fill"></i>
+      <div>
+        Jabatan dicocokkan dengan kolom <strong style="color:var(--text);">Divisi</strong> karyawan (case-insensitive).
+        Jika tidak ada yang cocok, rate pertama yang tersedia akan digunakan.
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="card-header-custom">
+          <div class="card-title-text"><i class="bi bi-table"></i> Daftar Rate Lembur</div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>No</th><th>Jabatan/Divisi</th><th>Rate/Jam</th><th>Keterangan</th><th>Diupdate</th><th>Aksi</th></tr>
+            </thead>
+            <tbody>
+              {% for r in rates %}
+              <tr>
+                <td class="td-muted">{{ loop.index }}</td>
+                <td><strong>{{ r.jabatan }}</strong></td>
+                <td><strong>Rp {{ "{:,.0f}".format(r.rate_per_jam) }}</strong></td>
+                <td class="td-muted">{{ r.keterangan or '–' }}</td>
+                <td class="td-muted" style="font-size:.78rem;">{{ r.diupdate.strftime('%Y-%m-%d') if r.diupdate else '–' }}</td>
+                <td>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn-ghost btn-sm-icon"
+                      onclick="openEditRate('{{ r.jabatan|e }}','{{ r.rate_per_jam|int }}','{{ r.keterangan or '' }}')">
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <form method="POST" action="{{ url_for('admin_hapus_lembur_rate', rate_id=r.id) }}"
+                          onsubmit="return confirm('Hapus rate {{ r.jabatan }}?')" style="margin:0;">
+                      <button class="btn-danger-soft btn-sm-icon" type="submit"><i class="bi bi-trash3"></i></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">Belum ada rate lembur.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div class="modal fade" id="modalEditRate" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('admin_simpan_lembur_rate') }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil c-accent"></i> Edit Rate Lembur</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Jabatan</label>
+            <input class="form-input" type="text" name="jabatan" id="er-jabatan" readonly style="opacity:.7;">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Rate per Jam (Rp) *</label>
+            <input class="form-input rupiah-input" type="text" inputmode="numeric" id="er-rate" placeholder="cth: 25.000" autocomplete="off">
+            <input type="hidden" name="rate_per_jam" class="rupiah-raw">
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Keterangan</label>
+            <input class="form-input" type="text" name="keterangan" id="er-ket">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn-accent"><i class="bi bi-save"></i> Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function openEditRate(jabatan, rate, ket) {
+  document.getElementById('er-jabatan').value = jabatan;
+  const display = document.getElementById('er-rate');
+  display.value = formatRupiah(rate);
+  display.nextElementSibling.value = rate;
+  document.getElementById('er-ket').value = ket;
+  new bootstrap.Modal(document.getElementById('modalEditRate')).show();
+}
+</script>
+{% endblock %}

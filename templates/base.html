@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id" data-bs-theme="light">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,25 +12,33 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
     :root {
-      --bg:          #f6f7fb;
-      --surface:     #ffffff;
-      --surface2:    #f3f5f9;
-      --border:      #d8dde8;
-      --text:        #111827;
-      --muted:       #6b7280;
-      --accent:      #4f46e5;
-      --accent-glow: rgba(79,70,229,.16);
-      --accent-dim:  rgba(79,70,229,.08);
-      --green:       #16a34a;
-      --amber:       #d97706;
-      --red:         #dc2626;
-      --sidebar-w:   248px;
-      --topbar-h:    56px;
-      --radius:      12px;
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface2: #f3f5f9;
+      --border: #d8dde8;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #4f46e5;
+      --accent-glow: rgba(79, 70, 229, .16);
+      --accent-dim: rgba(79, 70, 229, .08);
+      --green: #16a34a;
+      --amber: #d97706;
+      --red: #dc2626;
+      --sidebar-w: 248px;
+      --topbar-h: 56px;
+      --radius: 12px;
     }
 
-    * { box-sizing: border-box; text-decoration: none !important; }
-    html, body { height: 100%; }
+    * {
+      box-sizing: border-box;
+      text-decoration: none !important;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
     body {
       font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg);
@@ -39,66 +48,123 @@
     }
 
     /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 99px;
+    }
 
     /* ── Sidebar ── */
     .sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
       width: var(--sidebar-w);
       background: var(--surface);
       border-right: 1px solid var(--border);
-      display: flex; flex-direction: column;
+      display: flex;
+      flex-direction: column;
       z-index: 1040;
-      transition: transform .28s cubic-bezier(.4,0,.2,1);
+      transition: transform .28s cubic-bezier(.4, 0, .2, 1);
       overflow: hidden;
     }
 
     .sidebar-brand {
-      display: flex; align-items: center; gap: 11px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
       padding: 20px 18px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
+
     .brand-icon {
-      width: 25px; height: 25px;
+      width: 25px;
+      height: 25px;
       border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
       overflow: hidden;
       background: transparent;
     }
+
     .brand-icon img {
-      width: 100%; height: 100%; object-fit: contain;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       display: block;
     }
-    .brand-logo { font-size: .95rem; font-weight: 700; color: var(--text); line-height: 1.2; }
-    .brand-sub  { font-size: .68rem; color: var(--muted); }
+
+    .brand-logo {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      font-size: .68rem;
+      color: var(--muted);
+    }
 
     /* Sidebar nav */
-    .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
+    .sidebar-nav {
+      padding: 12px 10px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
     .nav-section {
-      font-size: .62rem; text-transform: uppercase;
-      letter-spacing: .1em; color: var(--muted);
+      font-size: .62rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
       padding: 10px 8px 4px;
       font-weight: 600;
     }
+
     .nav-link {
-      display: flex; align-items: center; gap: 9px;
-      padding: 8px 10px; border-radius: 9px;
-      color: var(--muted); font-size: .845rem;
-      text-decoration: none; font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      color: var(--muted);
+      font-size: .845rem;
+      text-decoration: none;
+      font-weight: 500;
       margin-bottom: 2px;
       transition: background .15s, color .15s;
     }
-    .nav-link:hover { background: rgba(15,23,42,.05); color: var(--text); }
+
+    .nav-link:hover {
+      background: rgba(15, 23, 42, .05);
+      color: var(--text);
+    }
+
     .nav-link.active {
       background: var(--accent-dim);
       color: var(--accent);
       font-weight: 600;
     }
-    .nav-link .nav-icon { display: flex; width: 18px; flex-shrink: 0; font-size: 15px; }
+
+    .nav-link .nav-icon {
+      display: flex;
+      width: 18px;
+      flex-shrink: 0;
+      font-size: 15px;
+    }
 
     /* Sidebar absensi mini */
     .sidebar-absen-panel {
@@ -113,538 +179,923 @@
     .sidebar-footer {
       padding: 12px 14px;
       border-top: 1px solid var(--border);
-      display: flex; align-items: center; gap: 9px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
       flex-shrink: 0;
     }
+
     .footer-avatar {
-      width: 30px; height: 30px;
+      width: 30px;
+      height: 30px;
       background: var(--accent-dim);
-      border: 1px solid rgba(108,99,255,.3);
+      border: 1px solid rgba(108, 99, 255, .3);
       border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--accent); font-size: 14px; flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 14px;
+      flex-shrink: 0;
     }
-    .footer-user strong { display: block; font-size: .81rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
-    .footer-user span   { font-size: .69rem; color: var(--muted); }
+
+    .footer-user strong {
+      display: block;
+      font-size: .81rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
+    }
+
+    .footer-user span {
+      font-size: .69rem;
+      color: var(--muted);
+    }
 
     /* Overlay */
     .sidebar-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(15,23,42,.12); z-index: 1039;
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .12);
+      z-index: 1039;
     }
-    .sidebar-overlay.show { display: block; }
+
+    .sidebar-overlay.show {
+      display: block;
+    }
 
     /* ── Main ── */
     .main-wrapper {
       margin-left: var(--sidebar-w);
       min-height: 100vh;
-      display: flex; flex-direction: column;
+      display: flex;
+      flex-direction: column;
     }
 
     /* Topbar */
     .topbar {
-      position: sticky; top: 0; z-index: 100;
+      position: sticky;
+      top: 0;
+      z-index: 100;
       height: var(--topbar-h);
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 24px; gap: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 12px;
       backdrop-filter: blur(8px);
     }
+
     .topbar-title {
-      display: flex; align-items: center; gap: 8px;
-      font-weight: 600; font-size: .9rem; flex: 1; min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: .9rem;
+      flex: 1;
+      min-width: 0;
     }
-    .topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
 
     .btn-hamburger {
-      display: none; align-items: center; justify-content: center;
-      width: 34px; height: 34px;
-      background: none; border: 1px solid var(--border);
-      border-radius: 8px; color: var(--muted); cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
       transition: color .15s;
     }
-    .btn-hamburger:hover { color: var(--text); }
+
+    .btn-hamburger:hover {
+      color: var(--text);
+    }
 
     .btn-logout {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 13px; border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 13px;
+      border-radius: 8px;
       border: 1px solid var(--border);
-      color: var(--muted); background: none;
-      font-size: .78rem; text-decoration: none;
+      color: var(--muted);
+      background: none;
+      font-size: .78rem;
+      text-decoration: none;
       transition: color .15s, border-color .15s;
       white-space: nowrap;
     }
-    .btn-logout:hover { color: var(--red); border-color: var(--red); }
+
+    .btn-logout:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
 
     /* ── Page content ── */
-    .page-content { padding: 22px 24px 32px; flex: 1; }
+    .page-content {
+      padding: 22px 24px 32px;
+      flex: 1;
+    }
 
     /* ── Flash messages ── */
-    .flash-list { list-style: none; padding: 0; margin-bottom: 18px; }
-    .flash-item {
-      display: flex; align-items: center; gap: 9px;
-      padding: 11px 15px; border-radius: 10px;
-      font-size: .85rem; margin-bottom: 6px;
+    .flash-list {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 18px;
     }
-    .flash-success { background: rgba(34,197,94,.1);  border: 1px solid rgba(34,197,94,.25);  color: var(--green); }
-    .flash-danger  { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: var(--red); }
-    .flash-warning { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); color: var(--amber); }
+
+    .flash-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 15px;
+      border-radius: 10px;
+      font-size: .85rem;
+      margin-bottom: 6px;
+    }
+
+    .flash-success {
+      background: rgba(34, 197, 94, .1);
+      border: 1px solid rgba(34, 197, 94, .25);
+      color: var(--green);
+    }
+
+    .flash-danger {
+      background: rgba(239, 68, 68, .1);
+      border: 1px solid rgba(239, 68, 68, .25);
+      color: var(--red);
+    }
+
+    .flash-warning {
+      background: rgba(245, 158, 11, .1);
+      border: 1px solid rgba(245, 158, 11, .25);
+      color: var(--amber);
+    }
 
     /* ── Cards ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border) !important;
       border-radius: var(--radius) !important;
-      box-shadow: 0 10px 30px rgba(15,23,42,.08);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
     }
+
     .card-header-custom {
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 16px;
     }
+
     .card-title-text {
-      display: flex; align-items: center; gap: 7px;
-      font-weight: 600; font-size: .88rem; color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 600;
+      font-size: .88rem;
+      color: var(--text);
     }
 
     /* ── Page header ── */
     .page-header {
-      display: flex; align-items: flex-start;
+      display: flex;
+      align-items: flex-start;
       justify-content: space-between;
-      margin-bottom: 22px; gap: 12px; flex-wrap: wrap;
-    }
-    .page-header h1 {
-      font-size: 1.25rem; font-weight: 700;
-      display: flex; align-items: center; gap: 9px;
-      margin: 0;
-    }
-    .page-sub { font-size: .8rem; color: var(--muted); margin-top: 4px; }
-
-    /* ── Metric cards ── */
-    .metric-card { text-align: center; padding: 20px 12px; }
-    .metric-icon {
-      width: 42px; height: 42px; border-radius: 11px;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 11px; font-size: 18px;
-    }
-    .metric-num { font-size: 2rem; font-weight: 700; line-height: 1.1; }
-    .metric-lbl { font-size: .76rem; color: var(--muted); margin-top: 5px; }
-
-    .c-accent { color: var(--accent); }
-    .c-green  { color: var(--green); }
-    .c-amber  { color: var(--amber); }
-    .c-red    { color: var(--red); }
-    .bg-accent-soft { background: var(--accent-dim); color: var(--accent); }
-    .bg-green-soft  { background: rgba(34,197,94,.12);  color: var(--green); }
-    .bg-amber-soft  { background: rgba(245,158,11,.12); color: var(--amber); }
-    .bg-red-soft    { background: rgba(239,68,68,.12);  color: var(--red); }
-
-    /* ── Table ── */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
-    .data-table th {
-      text-align: left; color: var(--muted); font-weight: 600;
-      padding: 9px 13px; border-bottom: 1px solid var(--border);
-      font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
-      white-space: nowrap; background: transparent;
-    }
-    .data-table td {
-      padding: 10px 13px; border-bottom: 1px solid var(--border);
-      vertical-align: middle; color: var(--text);
-    }
-    .data-table tr:last-child td { border-bottom: none; }
-    .data-table tr:hover td { background: rgba(15,23,42,.04); }
-    .td-muted { color: var(--muted) !important; font-size: .82rem; }
-
-    .pagination-bar {
-      display: flex; flex-wrap: wrap; align-items: center;
-      justify-content: space-between; gap: 10px;
-      padding: 12px 14px; margin: 14px 0 10px;
-      background: rgba(255,255,255,.9); border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-    .pagination-info {
-      color: var(--muted); font-size: .82rem;
-      min-width: 160px;
-    }
-    .pagination-actions {
-      display: inline-flex; align-items: center; gap: 6px;
+      margin-bottom: 22px;
+      gap: 12px;
       flex-wrap: wrap;
     }
+
+    .page-header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0;
+    }
+
+    .page-sub {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Metric cards ── */
+    .metric-card {
+      text-align: center;
+      padding: 20px 12px;
+    }
+
+    .metric-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 11px;
+      font-size: 18px;
+    }
+
+    .metric-num {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .metric-lbl {
+      font-size: .76rem;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    .c-accent {
+      color: var(--accent);
+    }
+
+    .c-green {
+      color: var(--green);
+    }
+
+    .c-amber {
+      color: var(--amber);
+    }
+
+    .c-red {
+      color: var(--red);
+    }
+
+    .bg-accent-soft {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .bg-green-soft {
+      background: rgba(34, 197, 94, .12);
+      color: var(--green);
+    }
+
+    .bg-amber-soft {
+      background: rgba(245, 158, 11, .12);
+      color: var(--amber);
+    }
+
+    .bg-red-soft {
+      background: rgba(239, 68, 68, .12);
+      color: var(--red);
+    }
+
+    /* ── Table ── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .84rem;
+    }
+
+    .data-table th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 600;
+      padding: 9px 13px;
+      border-bottom: 1px solid var(--border);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      white-space: nowrap;
+      background: transparent;
+    }
+
+    .data-table td {
+      padding: 10px 13px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--text);
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table tr:hover td {
+      background: rgba(15, 23, 42, .04);
+    }
+
+    .td-muted {
+      color: var(--muted) !important;
+      font-size: .82rem;
+    }
+
+    .pagination-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      margin: 14px 0 10px;
+      background: rgba(255, 255, 255, .9);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .pagination-info {
+      color: var(--muted);
+      font-size: .82rem;
+      min-width: 160px;
+    }
+
+    .pagination-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
     .pagination-actions button {
-      border: 1px solid var(--border); border-radius: 10px;
-      background: var(--surface); color: var(--text); padding: 7px 12px;
-      font-size: .82rem; cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 7px 12px;
+      font-size: .82rem;
+      cursor: pointer;
       transition: background .15s, border-color .15s;
     }
+
     .pagination-actions button:hover:not(:disabled) {
-      background: rgba(79,70,229,.06);
-      border-color: rgba(79,70,229,.25);
+      background: rgba(79, 70, 229, .06);
+      border-color: rgba(79, 70, 229, .25);
     }
+
     .pagination-actions button:disabled {
-      opacity: .5; cursor: not-allowed;
+      opacity: .5;
+      cursor: not-allowed;
     }
 
     /* ── Badges ── */
-    .badge-masuk   { background: rgba(34,197,94,.13)  !important; color: var(--green)  !important; border: 1px solid rgba(34,197,94,.25) !important; }
-    .badge-pulang  { background: rgba(245,158,11,.13) !important; color: var(--amber) !important; border: 1px solid rgba(245,158,11,.25) !important; }
-    .badge-admin   { background: rgba(108,99,255,.13) !important; color: var(--accent) !important; border: 1px solid rgba(108,99,255,.25) !important; }
-    .badge-karyawan{ background: rgba(107,114,128,.12)!important; color: var(--muted)  !important; border: 1px solid rgba(107,114,128,.2) !important; }
+    .badge-masuk {
+      background: rgba(34, 197, 94, .13) !important;
+      color: var(--green) !important;
+      border: 1px solid rgba(34, 197, 94, .25) !important;
+    }
+
+    .badge-pulang {
+      background: rgba(245, 158, 11, .13) !important;
+      color: var(--amber) !important;
+      border: 1px solid rgba(245, 158, 11, .25) !important;
+    }
+
+    .badge-admin {
+      background: rgba(108, 99, 255, .13) !important;
+      color: var(--accent) !important;
+      border: 1px solid rgba(108, 99, 255, .25) !important;
+    }
+
+    .badge-karyawan {
+      background: rgba(107, 114, 128, .12) !important;
+      color: var(--muted) !important;
+      border: 1px solid rgba(107, 114, 128, .2) !important;
+    }
+
     .status-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 9px; border-radius: 99px;
-      font-size: .7rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .04em;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
       white-space: nowrap;
     }
 
     /* ── Buttons ── */
     .btn-accent {
-      background: var(--accent); color: #fff; border: none;
-      padding: 8px 16px; border-radius: 9px; font-size: .85rem;
-      font-weight: 600; cursor: pointer; display: inline-flex;
-      align-items: center; gap: 7px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 9px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       transition: opacity .15s, box-shadow .15s;
     }
-    .btn-accent:hover { opacity: .88; box-shadow: 0 0 18px var(--accent-glow); }
-    .btn-accent:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-accent:hover {
+      opacity: .88;
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+
+    .btn-accent:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
     .btn-ghost {
-      background: none; border: 1px solid var(--border);
-      color: var(--text); padding: 7px 15px; border-radius: 9px;
-      font-size: .84rem; font-weight: 500; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 7px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 15px;
+      border-radius: 9px;
+      font-size: .84rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       transition: background .15s, border-color .15s;
     }
-    .btn-ghost:hover { background: rgba(15,23,42,.04); }
+
+    .btn-ghost:hover {
+      background: rgba(15, 23, 42, .04);
+    }
+
     .btn-danger-soft {
-      background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
-      color: var(--red); padding: 6px 12px; border-radius: 8px;
-      font-size: .79rem; font-weight: 600; cursor: pointer;
-      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(239, 68, 68, .1);
+      border: 1px solid rgba(239, 68, 68, .2);
+      color: var(--red);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: .79rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       transition: background .15s;
     }
-    .btn-danger-soft:hover { background: rgba(239,68,68,.18); }
-    .btn-sm-icon { padding: 5px 11px; font-size: .78rem; border-radius: 8px; }
+
+    .btn-danger-soft:hover {
+      background: rgba(239, 68, 68, .18);
+    }
+
+    .btn-sm-icon {
+      padding: 5px 11px;
+      font-size: .78rem;
+      border-radius: 8px;
+    }
 
     /* ── Form controls ── */
-    .form-label { font-size: .8rem; color: var(--muted); font-weight: 500; margin-bottom: 5px; display: block; }
+    .form-label {
+      font-size: .8rem;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 5px;
+      display: block;
+    }
+
     .form-input {
-      width: 100%; background: var(--bg); border: 1px solid var(--border);
-      color: var(--text); padding: 9px 13px; border-radius: 9px;
-      font-size: .88rem; outline: none; transition: border-color .15s;
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 13px;
+      border-radius: 9px;
+      font-size: .88rem;
+      outline: none;
+      transition: border-color .15s;
       appearance: none;
     }
-    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
-    select.form-input option { background: var(--surface); }
-    .form-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .7; cursor: pointer; }
+
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    select.form-input option {
+      background: var(--surface);
+    }
+
+    .form-input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: .7;
+      cursor: pointer;
+    }
 
     /* Input with icon */
-    .input-group-custom { position: relative; }
-    .input-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
-    .input-group-custom .form-input { padding-left: 36px; }
+    .input-group-custom {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    .input-group-custom .form-input {
+      padding-left: 36px;
+    }
 
     /* ── Info banner ── */
     .info-banner {
-      background: rgba(108,99,255,.07);
-      border: 1px solid rgba(108,99,255,.22);
-      border-radius: 10px; padding: 12px 15px;
-      display: flex; gap: 10px; align-items: flex-start;
-      font-size: .82rem; color: var(--muted); line-height: 1.6;
+      background: rgba(108, 99, 255, .07);
+      border: 1px solid rgba(108, 99, 255, .22);
+      border-radius: 10px;
+      padding: 12px 15px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: .82rem;
+      color: var(--muted);
+      line-height: 1.6;
     }
-    .info-banner .bi { color: var(--accent); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    .info-banner .bi {
+      color: var(--accent);
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
 
     /* ── Divider ── */
-    hr.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 18px 0;
+    }
 
     /* ── Responsive ── */
     @media (max-width: 991.98px) {
-      .sidebar { transform: translateX(-100%); }
-      .sidebar.open { transform: translateX(0); }
-      .main-wrapper { margin-left: 0; }
-      .topbar { padding: 0 16px; }
-      .btn-hamburger { display: inline-flex; }
-      .page-content { padding: 16px 16px 28px; }
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-wrapper {
+        margin-left: 0;
+      }
+
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .btn-hamburger {
+        display: inline-flex;
+      }
+
+      .page-content {
+        padding: 16px 16px 28px;
+      }
     }
 
     @media (max-width: 575.98px) {
-      .page-header h1 { font-size: 1.1rem; }
-      .metric-num { font-size: 1.65rem; }
-      .topbar { padding: 0 12px; }
-      .btn-logout span { display: none; }
+      .page-header h1 {
+        font-size: 1.1rem;
+      }
+
+      .metric-num {
+        font-size: 1.65rem;
+      }
+
+      .topbar {
+        padding: 0 12px;
+      }
+
+      .btn-logout span {
+        display: none;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-brand">
-    <div class="brand-icon">
-      <img src="{{ url_for('serve_asset', filename='Logo_Alpharich.webp') }}" alt="Alpharich Logo">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <img src="{{ url_for('serve_asset', filename='Logo_Alpharich.webp') }}" alt="Alpharich Logo">
+      </div>
+      <div>
+        <div class="brand-logo">Alpharich Digital Solution</div>
+        <div class="brand-sub">Sistem Absensi</div>
+      </div>
     </div>
-    <div>
-      <div class="brand-logo">Alpharich Digital Solution</div>
-      <div class="brand-sub">Sistem Absensi</div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Dashboard</div>
+      <a href="{{ url_for('absensi') }}" class="nav-link {% if request.endpoint == 'absensi' %}active{% endif %}"
+        onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-clock"></i></span> Dashboard
+      </a>
+
+      <div class="nav-section mt-2">Menu</div>
+      <a href="{{ url_for('riwayat_absensi') }}"
+        class="nav-link {% if request.endpoint == 'riwayat_absensi' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-clock-history"></i></span> Riwayat Saya
+      </a>
+      <a href="{{ url_for('overtime') }}" class="nav-link {% if request.endpoint == 'overtime' %}active{% endif %}"
+        onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-hourglass-split"></i></span> Lembur Request
+      </a>
+      <a href="{{ url_for('home_early') }}" class="nav-link {% if request.endpoint == 'home_early' %}active{% endif %}"
+        onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-door-open"></i></span> Pulang Awal Request
+      </a>
+
+      {% if session.get('role') == 'admin' %}
+      <div class="nav-section mt-2">Admin</div>
+      <a href="{{ url_for('admin_dashboard') }}"
+        class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-grid"></i></span> Dashboard
+      </a>
+      <a href="{{ url_for('admin_karyawan') }}"
+        class="nav-link {% if request.endpoint in ['admin_karyawan','admin_daftar_karyawan'] %}active{% endif %}"
+        onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-people"></i></span> Karyawan
+      </a>
+      <a href="{{ url_for('admin_laporan') }}"
+        class="nav-link {% if request.endpoint == 'admin_laporan' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-bar-chart-line"></i></span> Laporan
+      </a>
+      <a href="{{ url_for('admin_users') }}"
+        class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-shield-check"></i></span> Users
+      </a>
+      <a href="{{ url_for('admin_shift') }}"
+        class="nav-link {% if request.endpoint in ['admin_shift'] %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-alarm"></i></span> Shift
+      </a>
+      <a href="{{ url_for('admin_overtime') }}"
+        class="nav-link {% if request.endpoint == 'admin_overtime' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-hourglass-split"></i></span> Lembur Approval
+      </a>
+      <a href="{{ url_for('admin_logs') }}" class="nav-link {% if request.endpoint == 'admin_logs' %}active{% endif %}"
+        onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-file-earmark-text"></i></span> Logs
+      </a>
+      <a href="{{ url_for('admin_home_early') }}"
+        class="nav-link {% if request.endpoint == 'admin_home_early' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-door-open"></i></span> Pulang Awal Approval
+      </a>
+      <div class="nav-section mt-2">Penggajian</div>
+      <a href="{{ url_for('admin_gaji') }}"
+        class="nav-link {% if request.endpoint == 'admin_gaji' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-cash-stack"></i></span> Gaji Pokok
+      </a>
+      <a href="{{ url_for('admin_izin_sakit') }}"
+        class="nav-link {% if request.endpoint in ['admin_izin_sakit'] %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-bandaid"></i></span> Izin / Sakit
+      </a>
+      <a href="{{ url_for('admin_potongan') }}"
+        class="nav-link {% if request.endpoint == 'admin_potongan' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-scissors"></i></span> Potongan
+      </a>
+      <a href="{{ url_for('admin_lembur_rate') }}"
+        class="nav-link {% if request.endpoint == 'admin_lembur_rate' %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-clock-history"></i></span> Rate Lembur
+      </a>
+      <a href="{{ url_for('admin_laporan_gaji') }}"
+        class="nav-link {% if request.endpoint in ['admin_laporan_gaji','admin_export_gaji'] %}active{% endif %}" onclick="closeSidebar()">
+        <span class="nav-icon"><i class="bi bi-receipt"></i></span> Laporan Gaji
+      </a>
+      {% endif %}
+    </nav>
+
+    {% if session.get('role') != 'admin' %}
+    <div class="sidebar-absen-panel">
+      <div class="nav-section mb-1">Absensi Saya Hari Ini</div>
+      {% if session.get('nip') %}
+      <div
+        style="font-size:.69rem;color:var(--muted);padding:0 2px 5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+        <span style="color:var(--accent);font-weight:600;">{{ session.get('username') or session.get('email') }}</span>
+        <span class="status-badge badge-admin" style="font-size:.62rem;">NIP: {{ session.get('nip') }}</span>
+      </div>
+      {% endif %}
+      <div id="sidebar-absensi">
+        <div style="color:var(--muted);padding:4px 2px;font-size:.74rem;">Memuat…</div>
+      </div>
     </div>
-  </div>
-
-  <nav class="sidebar-nav">
-    <div class="nav-section">Dashboard</div>
-    <a href="{{ url_for('absensi') }}"
-       class="nav-link {% if request.endpoint == 'absensi' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-clock"></i></span> Dashboard
-    </a>
-
-    <div class="nav-section mt-2">Menu</div>
-    <a href="{{ url_for('riwayat_absensi') }}"
-       class="nav-link {% if request.endpoint == 'riwayat_absensi' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-clock-history"></i></span> Riwayat Saya
-    </a>
-    <a href="{{ url_for('overtime') }}"
-       class="nav-link {% if request.endpoint == 'overtime' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-hourglass-split"></i></span> Lembur Request
-    </a>
-    <a href="{{ url_for('home_early') }}"
-       class="nav-link {% if request.endpoint == 'home_early' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-door-open"></i></span> Pulang Awal Request
-    </a>
-
-    {% if session.get('role') == 'admin' %}
-    <div class="nav-section mt-2">Admin</div>
-    <a href="{{ url_for('admin_dashboard') }}"
-       class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-grid"></i></span> Dashboard
-    </a>
-    <a href="{{ url_for('admin_karyawan') }}"
-       class="nav-link {% if request.endpoint in ['admin_karyawan','admin_daftar_karyawan'] %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-people"></i></span> Karyawan
-    </a>
-    <a href="{{ url_for('admin_laporan') }}"
-       class="nav-link {% if request.endpoint == 'admin_laporan' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-bar-chart-line"></i></span> Laporan
-    </a>
-    <a href="{{ url_for('admin_users') }}"
-       class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-shield-check"></i></span> Users
-    </a>
-    <a href="{{ url_for('admin_shift') }}"
-       class="nav-link {% if request.endpoint in ['admin_shift'] %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-alarm"></i></span> Shift
-    </a>
-    <a href="{{ url_for('admin_overtime') }}"
-       class="nav-link {% if request.endpoint == 'admin_overtime' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-hourglass-split"></i></span> Lembur Approval
-    </a>
-    <a href="{{ url_for('admin_logs') }}"
-       class="nav-link {% if request.endpoint == 'admin_logs' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-file-earmark-text"></i></span> Logs
-    </a>
-    <a href="{{ url_for('admin_home_early') }}"
-       class="nav-link {% if request.endpoint == 'admin_home_early' %}active{% endif %}"
-       onclick="closeSidebar()">
-      <span class="nav-icon"><i class="bi bi-door-open"></i></span> Pulang Awal Approval
-    </a>
-    {% endif %}
-  </nav>
-
-  {% if session.get('role') != 'admin' %}
-  <div class="sidebar-absen-panel">
-    <div class="nav-section mb-1">Absensi Saya Hari Ini</div>
-    {% if session.get('nip') %}
-    <div style="font-size:.69rem;color:var(--muted);padding:0 2px 5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-      <span style="color:var(--accent);font-weight:600;">{{ session.get('username') or session.get('email') }}</span>
-      <span class="status-badge badge-admin" style="font-size:.62rem;">NIP: {{ session.get('nip') }}</span>
-    </div>
-    {% endif %}
-    <div id="sidebar-absensi">
-      <div style="color:var(--muted);padding:4px 2px;font-size:.74rem;">Memuat…</div>
-    </div>
-  </div>
-  <script>
-  (function(){
-    var userNip = '{{ session.get("nip") or "" }}';
-    function loadSidebarAbsensi() {
-      fetch('/api/absensi-hari-ini')
-        .then(r => r.json())
-        .then(data => {
-          var el = document.getElementById('sidebar-absensi');
-          if (!userNip) {
-            el.innerHTML = '<div style="color:var(--amber);padding:4px 2px;font-size:.72rem;">⚠ NIP belum diisi.</div>';
-            return;
-          }
-          var mine = data.filter(d => String(d.nip) === String(userNip));
-          if (!mine.length) {
-            el.innerHTML = '<div style="color:var(--muted);padding:4px 2px;font-size:.74rem;">Belum ada absensi hari ini</div>';
-            return;
-          }
-          el.innerHTML = mine.map(d => {
-            var c = d.tipe === 'masuk' ? 'var(--green)' : 'var(--amber)';
-            return `<div style="display:flex;align-items:center;gap:7px;padding:5px 6px;background:rgba(255,255,255,.03);border-radius:7px;margin-bottom:4px;border:1px solid var(--border);">
+    <script>
+      (function () {
+        var userNip = '{{ session.get("nip") or "" }}';
+        function loadSidebarAbsensi() {
+          fetch('/api/absensi-hari-ini')
+            .then(r => r.json())
+            .then(data => {
+              var el = document.getElementById('sidebar-absensi');
+              if (!userNip) {
+                el.innerHTML = '<div style="color:var(--amber);padding:4px 2px;font-size:.72rem;">⚠ NIP belum diisi.</div>';
+                return;
+              }
+              var mine = data.filter(d => String(d.nip) === String(userNip));
+              if (!mine.length) {
+                el.innerHTML = '<div style="color:var(--muted);padding:4px 2px;font-size:.74rem;">Belum ada absensi hari ini</div>';
+                return;
+              }
+              el.innerHTML = mine.map(d => {
+                var c = d.tipe === 'masuk' ? 'var(--green)' : 'var(--amber)';
+                return `<div style="display:flex;align-items:center;gap:7px;padding:5px 6px;background:rgba(255,255,255,.03);border-radius:7px;margin-bottom:4px;border:1px solid var(--border);">
               <span style="font-size:.66rem;font-weight:700;color:${c};">${d.tipe.toUpperCase()}</span>
               <span style="font-size:.72rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.nama}</span>
-              <span style="font-size:.7rem;color:var(--text);font-variant-numeric:tabular-nums;">${d.waktu.slice(11,16)}</span>
+              <span style="font-size:.7rem;color:var(--text);font-variant-numeric:tabular-nums;">${d.waktu.slice(11, 16)}</span>
             </div>`;
-          }).join('');
-        }).catch(() => {});
-    }
-    loadSidebarAbsensi();
-    setInterval(loadSidebarAbsensi, 20000);
-  })();
-  </script>
-  {% endif %}
+              }).join('');
+            }).catch(() => { });
+        }
+        loadSidebarAbsensi();
+        setInterval(loadSidebarAbsensi, 20000);
+      })();
+    </script>
+    {% endif %}
 
-  <div class="sidebar-footer">
-    <div class="footer-avatar"><i class="bi bi-person"></i></div>
-    <div class="footer-user">
-      <strong>{{ session.get('username') or session.get('email', '-') }}</strong>
-      <span>{{ session.get('role', '') }}</span>
+    <div class="sidebar-footer">
+      <div class="footer-avatar"><i class="bi bi-person"></i></div>
+      <div class="footer-user">
+        <strong>{{ session.get('username') or session.get('email', '-') }}</strong>
+        <span>{{ session.get('role', '') }}</span>
+      </div>
     </div>
-  </div>
-</aside>
+  </aside>
 
-<div class="main-wrapper">
-  <header class="topbar">
-    <button class="btn-hamburger" id="btn-hamburger" onclick="openSidebar()" aria-label="Menu">
-      <i class="bi bi-list" style="font-size:18px;"></i>
-    </button>
-    <span class="topbar-title"><i class="bi bi-grid me-1"></i> Dashboard</span>
-    <div class="topbar-right">
-      <a href="{{ url_for('logout') }}" class="btn-logout">
-        <i class="bi bi-box-arrow-right"></i>
-        <span>Logout</span>
-      </a>
-    </div>
-  </header>
+  <div class="main-wrapper">
+    <header class="topbar">
+      <button class="btn-hamburger" id="btn-hamburger" onclick="openSidebar()" aria-label="Menu">
+        <i class="bi bi-list" style="font-size:18px;"></i>
+      </button>
+      <span class="topbar-title"><i class="bi bi-grid me-1"></i> Dashboard</span>
+      <div class="topbar-right">
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+          <i class="bi bi-box-arrow-right"></i>
+          <span>Logout</span>
+        </a>
+      </div>
+    </header>
 
-  <main class="page-content">
-    {% with messages = get_flashed_messages(with_categories=true) %}
+    <main class="page-content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <ul class="flash-list">
-          {% for category, message in messages %}
-          <li class="flash-item flash-{{ category }}">
-            {% if category == 'success' %}<i class="bi bi-check-circle-fill"></i>
-            {% elif category == 'danger' %}<i class="bi bi-x-circle-fill"></i>
-            {% else %}<i class="bi bi-exclamation-triangle-fill"></i>{% endif %}
-            {{ message }}
-          </li>
-          {% endfor %}
-        </ul>
+      <ul class="flash-list">
+        {% for category, message in messages %}
+        <li class="flash-item flash-{{ category }}">
+          {% if category == 'success' %}<i class="bi bi-check-circle-fill"></i>
+          {% elif category == 'danger' %}<i class="bi bi-x-circle-fill"></i>
+          {% else %}<i class="bi bi-exclamation-triangle-fill"></i>{% endif %}
+          {{ message }}
+        </li>
+        {% endfor %}
+      </ul>
       {% endif %}
-    {% endwith %}
+      {% endwith %}
 
-    {% block content %}{% endblock %}
-  </main>
-</div>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  function openSidebar() {
-    document.getElementById('sidebar').classList.add('open');
-    document.getElementById('sidebar-overlay').classList.add('show');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebar-overlay').classList.remove('show');
-    document.body.style.overflow = '';
-  }
-  // Swipe to open
-  let _tx = 0;
-  document.addEventListener('touchstart', e => { _tx = e.touches[0].clientX; }, { passive: true });
-  document.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - _tx;
-    if (_tx < 24 && dx > 60) openSidebar();
-    if (dx < -60 && document.getElementById('sidebar').classList.contains('open')) closeSidebar();
-  }, { passive: true });
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function openSidebar() {
+      document.getElementById('sidebar').classList.add('open');
+      document.getElementById('sidebar-overlay').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebar-overlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+    // Swipe to open
+    let _tx = 0;
+    document.addEventListener('touchstart', e => { _tx = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - _tx;
+      if (_tx < 24 && dx > 60) openSidebar();
+      if (dx < -60 && document.getElementById('sidebar').classList.contains('open')) closeSidebar();
+    }, { passive: true });
 
-  function createPaginationBar() {
-    const bar = document.createElement('div');
-    bar.className = 'pagination-bar';
-    bar.innerHTML = `
+    function createPaginationBar(totalPages) {
+      const bar = document.createElement('div');
+      bar.className = 'pagination-bar';
+      let pageButtons = '';
+      for (let i = 1; i <= totalPages; i++) {
+        pageButtons += `<button type="button" data-page="${i}">${i}</button>`;
+      }
+      bar.innerHTML = `
       <div class="pagination-info"></div>
       <div class="pagination-actions">
-        <button type="button" data-action="first">First</button>
-        <button type="button" data-action="prev">Prev</button>
-        <button type="button" data-action="next">Next</button>
-        <button type="button" data-action="last">Last</button>
-      </div>
-    `;
-    return bar;
-  }
+        <button type="button" data-action="prev">&#8249;</button>
+        ${pageButtons}
+        <button type="button" data-action="next">&#8250;</button>
+      </div>`;
+      return bar;
+    }
 
-  function updatePaginationBar(bar, page, totalPages) {
-    const info = bar.querySelector('.pagination-info');
-    const btnFirst = bar.querySelector('[data-action="first"]');
-    const btnPrev = bar.querySelector('[data-action="prev"]');
-    const btnNext = bar.querySelector('[data-action="next"]');
-    const btnLast = bar.querySelector('[data-action="last"]');
-    if (!info) return;
-    info.textContent = `Halaman ${page} dari ${totalPages}`;
-    btnFirst.disabled = page === 1;
-    btnPrev.disabled = page === 1;
-    btnNext.disabled = page === totalPages;
-    btnLast.disabled = page === totalPages;
-  }
-
-  function paginateTable(table) {
-    if (table.dataset.paginationInitialized) return;
-    const tbody = table.tBodies[0];
-    if (!tbody) return;
-    const rows = Array.from(tbody.rows);
-    const pageSize = parseInt(table.dataset.rowsPerPage || '10', 10);
-    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-
-    const topBar = createPaginationBar();
-    const bottomBar = createPaginationBar();
-    table.parentNode.insertBefore(topBar, table);
-    table.parentNode.insertBefore(bottomBar, table.nextSibling);
-
-    function renderPage(page) {
-      const start = (page - 1) * pageSize;
-      const end = start + pageSize;
-      rows.forEach((row, index) => {
-        row.style.display = index >= start && index < end ? '' : 'none';
+    function updatePaginationBar(bar, page, totalPages) {
+      const info = bar.querySelector('.pagination-info');
+      if (!info) return;
+      info.textContent = `Halaman ${page} dari ${totalPages}`;
+      bar.querySelector('[data-action="prev"]').disabled = page === 1;
+      bar.querySelector('[data-action="next"]').disabled = page === totalPages;
+      bar.querySelectorAll('[data-page]').forEach(btn => {
+        const p = parseInt(btn.dataset.page, 10);
+        btn.style.background = p === page ? 'var(--accent)' : '';
+        btn.style.color = p === page ? '#fff' : '';
+        btn.style.borderColor = p === page ? 'var(--accent)' : '';
       });
-      updatePaginationBar(topBar, page, totalPages);
-      updatePaginationBar(bottomBar, page, totalPages);
-      table.dataset.currentPage = page;
     }
 
-    function handleClick(event) {
-      const button = event.target.closest('button');
-      if (!button) return;
-      const action = button.dataset.action;
-      const currentPage = parseInt(table.dataset.currentPage || '1', 10);
-      let nextPage = currentPage;
-      if (action === 'first') nextPage = 1;
-      if (action === 'prev') nextPage = Math.max(1, currentPage - 1);
-      if (action === 'next') nextPage = Math.min(totalPages, currentPage + 1);
-      if (action === 'last') nextPage = totalPages;
-      renderPage(nextPage);
+    function paginateTable(table) {
+      if (table.dataset.paginationInitialized) return;
+      const tbody = table.tBodies[0];
+      if (!tbody) return;
+      const rows = Array.from(tbody.rows);
+      const pageSize = parseInt(table.dataset.rowsPerPage || '10', 10);
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+
+      const topBar = createPaginationBar(totalPages);
+      const bottomBar = createPaginationBar(totalPages);
+      table.parentNode.insertBefore(topBar, table);
+      table.parentNode.insertBefore(bottomBar, table.nextSibling);
+
+      function renderPage(page) {
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        rows.forEach((row, index) => {
+          row.style.display = index >= start && index < end ? '' : 'none';
+        });
+        updatePaginationBar(topBar, page, totalPages);
+        updatePaginationBar(bottomBar, page, totalPages);
+        table.dataset.currentPage = page;
+      }
+
+      function handleClick(event) {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const currentPage = parseInt(table.dataset.currentPage || '1', 10);
+        let nextPage = currentPage;
+        if (button.dataset.action === 'prev') nextPage = Math.max(1, currentPage - 1);
+        else if (button.dataset.action === 'next') nextPage = Math.min(totalPages, currentPage + 1);
+        else if (button.dataset.page) nextPage = parseInt(button.dataset.page, 10);
+        renderPage(nextPage);
+      }
+
+      topBar.addEventListener('click', handleClick);
+      bottomBar.addEventListener('click', handleClick);
+      table.dataset.paginationInitialized = 'true';
+      renderPage(1);
     }
 
-    topBar.addEventListener('click', handleClick);
-    bottomBar.addEventListener('click', handleClick);
-    table.dataset.paginationInitialized = 'true';
-    renderPage(1);
-  }
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('.data-table').forEach(paginateTable);
 
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.data-table').forEach(paginateTable);
-  });
-</script>
-{% block scripts %}{% endblock %}
+      // ── Rupiah input formatter ──────────────────────────────────────────
+      function formatRupiah(val) {
+        // Buang desimal (.00) dulu sebelum format
+        var n = Math.round(parseFloat(String(val).replace(/,/g, '.')) || 0);
+        if (!n) return '';
+        return n.toLocaleString('id-ID');
+      }
+      window.formatRupiah = formatRupiah;
+
+      document.querySelectorAll('.rupiah-input').forEach(function(el) {
+        var raw = el.nextElementSibling;
+        el.addEventListener('input', function() {
+          var digits = el.value.replace(/\D/g, '');
+          el.value = digits ? parseInt(digits, 10).toLocaleString('id-ID') : '';
+          if (raw) raw.value = digits;
+        });
+        el.closest('form').addEventListener('submit', function() {
+          var digits = el.value.replace(/\D/g, '');
+          if (raw) raw.value = digits;
+        });
+      });
+    });
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
+
 </html>

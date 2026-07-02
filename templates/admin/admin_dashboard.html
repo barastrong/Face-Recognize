@@ -8,8 +8,21 @@
     <h1><i class="bi bi-grid" style="color:var(--accent);"></i> Dashboard Admin</h1>
     <div class="page-sub">Rekap absensi hari ini — <span id="tanggal-hari-ini"></span></div>
   </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if ot_pending > 0 %}
+    <a href="{{ url_for('admin_overtime') }}?status=pending" class="btn-ghost btn-sm-icon" style="color:var(--amber);border-color:rgba(217,119,6,.3);">
+      <i class="bi bi-hourglass-split"></i> {{ ot_pending }} Lembur Pending
+    </a>
+    {% endif %}
+    {% if he_pending > 0 %}
+    <a href="{{ url_for('admin_home_early') }}?status=pending" class="btn-ghost btn-sm-icon" style="color:var(--red);border-color:rgba(220,38,38,.3);">
+      <i class="bi bi-door-open"></i> {{ he_pending }} Pulang Awal Pending
+    </a>
+    {% endif %}
+  </div>
 </div>
 
+<!-- Metric Cards -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
     <div class="card metric-card">
@@ -41,6 +54,36 @@
   </div>
 </div>
 
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <!-- Grafik 7 Hari -->
+  <div class="col-12 col-lg-8">
+    <div class="card" style="padding:20px 22px;">
+      <div class="card-header-custom">
+        <div class="card-title-text"><i class="bi bi-bar-chart-line"></i> Kehadiran 7 Hari Terakhir</div>
+      </div>
+      <canvas id="chartKehadiran" height="110"></canvas>
+    </div>
+  </div>
+  <!-- Donut Divisi -->
+  <div class="col-12 col-lg-4">
+    <div class="card" style="padding:20px 22px;">
+      <div class="card-header-custom">
+        <div class="card-title-text"><i class="bi bi-pie-chart"></i> Kehadiran per Divisi</div>
+      </div>
+      {% if chart_divisi_data != '[]' %}
+      <canvas id="chartDivisi" height="180"></canvas>
+      {% else %}
+      <div style="text-align:center;color:var(--muted);padding:48px 0;font-size:.84rem;">
+        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+        Belum ada data hari ini
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Tabel Absensi -->
 <div class="card p-3">
   <div class="card-header-custom">
     <span class="card-title-text"><i class="bi bi-table"></i> Absensi Hari Ini</span>
@@ -52,8 +95,8 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>No</th><th>Nama</th><th>NIP</th><th>Shift</th>
-          <th>Check In</th><th>Check Out</th><th>Durasi</th><th>Lokasi</th>
+          <th>No</th><th>Nama</th><th>NIP</th><th>Divisi</th><th>Shift</th>
+          <th>Check In</th><th>Check Out</th><th>Durasi</th><th>Status</th><th>Lokasi</th>
         </tr>
       </thead>
       <tbody>
@@ -72,6 +115,9 @@
               <td class="td-muted">{{ loop.index }}</td>
               <td><strong>{{ a.nama }}</strong></td>
               <td class="td-muted">{{ a.nip }}</td>
+              <td class="td-muted">
+                {% for k in karyawan %}{% if k.nip == a.nip %}{{ k.divisi }}{% endif %}{% endfor %}
+              </td>
               <td>
                 {% if a.nama_shift != '-' %}
                   <span class="status-badge badge-admin">{{ a.nama_shift }}</span>
@@ -101,7 +147,14 @@
                   <span class="live-timer" data-start-str="{{ a.waktu[11:19] }}">00:00:00</span>
                 {% endif %}
               </td>
-              <td class="td-muted" style="font-size:.77rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              <td>
+                {% if checkout.waktu != '-' %}
+                  <span class="status-badge badge-masuk"><i class="bi bi-check-circle"></i> Selesai</span>
+                {% else %}
+                  <span class="status-badge badge-karyawan"><i class="bi bi-clock"></i> Aktif</span>
+                {% endif %}
+              </td>
+              <td class="td-muted" style="font-size:.77rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                   title="{{ checkout.loc or a.location }}">
                 {{ (checkout.loc or a.location) or '–' }}
               </td>
@@ -109,7 +162,8 @@
           {% endif %}
         {% else %}
         <tr>
-          <td colspan="8" style="text-align:center;color:var(--muted);padding:36px;">
+          <td colspan="10" style="text-align:center;color:var(--muted);padding:48px;">
+            <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
             Belum ada absensi hari ini
           </td>
         </tr>
@@ -119,13 +173,18 @@
   </div>
 </div>
 
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
+  // Tanggal
   var d = new Date();
   var days   = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   document.getElementById('tanggal-hari-ini').textContent =
     days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
 
+  // Live timer
   function fmtSec(s) {
     return String(Math.floor(s/3600)).padStart(2,'0') + ':' +
            String(Math.floor((s%3600)/60)).padStart(2,'0') + ':' +
@@ -142,5 +201,85 @@
     });
   }
   tickDashboard(); setInterval(tickDashboard, 1000);
+
+  // Chart.js defaults
+  Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+  Chart.defaults.font.size   = 12;
+  Chart.defaults.color       = '#6b7280';
+
+  // Grafik Kehadiran 7 Hari
+  var labels  = {{ chart_labels|safe }};
+  var dMasuk  = {{ chart_masuk|safe }};
+  var dIzin   = {{ chart_izin|safe }};
+
+  new Chart(document.getElementById('chartKehadiran'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Hadir',
+          data: dMasuk,
+          backgroundColor: 'rgba(79,70,229,.75)',
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'Izin/Sakit',
+          data: dIzin,
+          backgroundColor: 'rgba(220,38,38,.55)',
+          borderRadius: 6,
+          borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, padding: 16 } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { color: 'rgba(0,0,0,.06)' }
+        }
+      }
+    }
+  });
+
+  // Donut Divisi
+  var divLabels = {{ chart_divisi_labels|safe }};
+  var divData   = {{ chart_divisi_data|safe }};
+  if (divLabels.length > 0) {
+    var palette = ['#4f46e5','#16a34a','#d97706','#dc2626','#0891b2','#7c3aed','#db2777','#059669'];
+    new Chart(document.getElementById('chartDivisi'), {
+      type: 'doughnut',
+      data: {
+        labels: divLabels,
+        datasets: [{
+          data: divData,
+          backgroundColor: palette.slice(0, divLabels.length),
+          borderWidth: 2,
+          borderColor: '#fff',
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 11, padding: 12 } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.parsed} orang`
+            }
+          }
+        }
+      }
+    });
+  }
 </script>
 {% endblock %}

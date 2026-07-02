@@ -48,7 +48,8 @@
           <td class="td-muted">{{ entry.get('tipe', '-') }}</td>
           <td class="td-muted">{{ entry.get('status', '-') }}</td>
           <td class="td-muted">{{ entry.get('location', '-') }}</td>
-          <td style="font-size:.82rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ entry | tojson | safe }}</td>
+          <td style="font-size:.82rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{
+            entry | tojson | safe }}</td>
         </tr>
         {% else %}
         <tr>

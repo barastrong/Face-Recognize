@@ -92,62 +92,13 @@ def test_connection() -> dict:
 
 
 def init_db():
-    """
-    Pastikan tabel PostgreSQL "user", "karyawan", dan "absensi" sudah dibuat.
-    """
+    """Cek koneksi ke PostgreSQL. Untuk setup tabel jalankan: python table.py"""
     try:
         conn = get_db_connection()
-        cur  = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS "user" (
-                id SERIAL PRIMARY KEY,
-                nip VARCHAR(50),
-                username VARCHAR(100),
-                email VARCHAR(150) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL,
-                role VARCHAR(50) NOT NULL DEFAULT 'karyawan'
-            );
-        ''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS karyawan (
-                id SERIAL PRIMARY KEY,
-                nama VARCHAR(150) NOT NULL,
-                nip VARCHAR(50),
-                divisi VARCHAR(100),
-                terdaftar TIMESTAMP NOT NULL DEFAULT NOW()
-            );
-        ''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS absensi (
-                id SERIAL PRIMARY KEY
-            );
-        ''')
-        # Migrasi defensif: tabel 'absensi' mungkin sudah ada dari versi sistem
-        # sebelumnya dengan kolom berbeda. ADD COLUMN IF NOT EXISTS aman dijalankan
-        # berulang kali, baik untuk tabel baru maupun tabel lama yang perlu dilengkapi.
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS nip VARCHAR(100)')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS nama VARCHAR(150)')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tipe VARCHAR(20)')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS waktu TIMESTAMP')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS tanggal DATE DEFAULT CURRENT_DATE')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS confidence REAL')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS karyawan_id INTEGER REFERENCES karyawan(id) ON DELETE CASCADE')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS check_in TIMESTAMP')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS check_out TIMESTAMP')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS confidence_in REAL')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS confidence_out REAL')
-        # ── Kolom location (baru) ────────────────────────────────────────────
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS location VARCHAR(255)')
-        cur.execute('ALTER TABLE absensi ADD COLUMN IF NOT EXISTS shift_id INTEGER REFERENCES shift_master(id) ON DELETE SET NULL')
-        cur.execute('ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS foto_urls JSONB DEFAULT \'[]\'')
-        cur.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_login BOOLEAN DEFAULT FALSE')
-        cur.execute('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS address VARCHAR(255)')
-        conn.commit()
-        cur.close()
         conn.close()
-        print("[INFO] Tabel 'user', 'karyawan', 'absensi' siap di PostgreSQL")
+        print("[INFO] Koneksi PostgreSQL OK")
     except Exception as e:
-        print(f"[ERROR] Gagal inisialisasi tabel di PostgreSQL: {e}")
+        print(f"[ERROR] Koneksi PostgreSQL gagal: {e}")
 
 
 def seed_admin():
@@ -159,9 +110,9 @@ def seed_admin():
         cur.execute('SELECT id FROM "user" WHERE email = %s', ("admin@local",))
         if cur.fetchone() is None:
             cur.execute(
-                'INSERT INTO "user" (username, email, password, role, nip, , is_login, address) '
+                'INSERT INTO "user" (username, email, password, role, nip, is_login, address) '
                 'VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                ("admin", "admin@local", generate_password_hash("admin123"), "admin", None)
+                ("admin", "admin@local", generate_password_hash("admin123"), "admin", None, False, None)
             )
             conn.commit()
             print("[INFO] Akun admin default dibuat: admin@local / admin123")
@@ -229,7 +180,7 @@ def tambah_user(email, username, password, role="karyawan", nip=None) -> dict:
             return {"success": False, "msg": f"Email '{email}' sudah terdaftar"}
         cur.execute(
             'INSERT INTO "user" (nip, username, email, password, role) '
-            'VALUES (%s, %s, %s, %s, %s, %s)',
+            'VALUES (%s, %s, %s, %s, %s)',
             (nip, username or email, email, generate_password_hash(password), role)
         )
         conn.commit()
@@ -625,6 +576,7 @@ def get_absensi_range(tgl_awal: str, tgl_akhir: str):
                 'durasi_detik': durasi_detik,
                 'durasi_fmt':   _fmt_durasi(durasi_detik),
                 'status':     status,
+                'lupa_absen': bool(r['check_in'] and not r['check_out']),
                 'location':   r['location'] or '-',
                 # compat lama
                 'tipe':  'masuk',
@@ -919,6 +871,13 @@ def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
                 durasi = f"{h:02d}:{m:02d}:{s:02d}"
             else:
                 durasi = None
+            # status: Lupa Absen jika check_in ada tapi check_out tidak
+            if ci and not co:
+                status_absen = 'Lupa Absen'
+            elif not ci:
+                status_absen = 'Tidak Hadir'
+            else:
+                status_absen = 'Selesai'
             result.append({
                 'tanggal':    r['tanggal'].strftime('%Y-%m-%d'),
                 'check_in':   ci.strftime('%H:%M') if ci else '-',
@@ -929,6 +888,7 @@ def get_absensi_karyawan(karyawan_id: int, limit: int = 30) -> list:
                 'jam_shift':  (str(r['jam_masuk'])[:5] + '–' + str(r['jam_pulang'])[:5]) if r['jam_masuk'] else '-',
                 'location':   r['location'] or '-',
                 'nip':        nip_val,
+                'status_absen': status_absen,
             })
         return result
     except Exception as e:
@@ -1042,6 +1002,392 @@ def update_home_early_status(req_id: int, status: str, catatan: str = '') -> dic
         )
         conn.commit(); cur.close(); conn.close()
         return {'success': True, 'msg': f'Status diubah ke {status}'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── EDIT KARYAWAN ────────────────────────────────────────────────────────────
+
+def edit_karyawan(karyawan_id: int, nama: str, nip: str, divisi: str) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'UPDATE karyawan SET nama=%s, nip=%s, divisi=%s WHERE id=%s',
+            (nama, nip or None, divisi or None, karyawan_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f"Karyawan '{nama}' berhasil diupdate"}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── EDIT USER ─────────────────────────────────────────────────────────────────
+
+def edit_user(user_id: int, email: str, username: str, role: str, nip: str = None,
+              password: str = None) -> dict:
+    from werkzeug.security import generate_password_hash
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        if password:
+            cur.execute(
+                'UPDATE "user" SET email=%s, username=%s, role=%s, nip=%s, password=%s WHERE id=%s',
+                (email, username, role, nip or None, generate_password_hash(password), user_id)
+            )
+        else:
+            cur.execute(
+                'UPDATE "user" SET email=%s, username=%s, role=%s, nip=%s WHERE id=%s',
+                (email, username, role, nip or None, user_id)
+            )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f"User '{email}' berhasil diupdate"}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── GAJI POKOK ────────────────────────────────────────────────────────────────
+
+def get_gaji_list():
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('''
+            SELECT g.id, g.karyawan_id, k.nama, k.nip, k.divisi, g.gaji_harian, g.diupdate
+            FROM gaji_pokok g
+            JOIN karyawan k ON k.id = g.karyawan_id
+            ORDER BY k.nama
+        ''')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_gaji_list: {e}')
+        return []
+
+
+def upsert_gaji(karyawan_id: int, gaji_harian: float) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('''
+            INSERT INTO gaji_pokok (karyawan_id, gaji_harian)
+            VALUES (%s, %s)
+            ON CONFLICT (karyawan_id)
+            DO UPDATE SET gaji_harian=EXCLUDED.gaji_harian, diupdate=NOW()
+        ''', (karyawan_id, gaji_harian))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Gaji pokok berhasil disimpan'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def hapus_gaji(gaji_id: int) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('DELETE FROM gaji_pokok WHERE id=%s', (gaji_id,))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Gaji pokok berhasil dihapus'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── POTONGAN CONFIG ───────────────────────────────────────────────────────────
+
+def get_potongan_list():
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT * FROM potongan_config ORDER BY jenis')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_potongan_list: {e}')
+        return []
+
+
+def upsert_potongan(jenis: str, nominal: float, keterangan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('''
+            INSERT INTO potongan_config (jenis, nominal, keterangan)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (jenis)
+            DO UPDATE SET nominal=EXCLUDED.nominal, keterangan=EXCLUDED.keterangan, diupdate=NOW()
+        ''', (jenis, nominal, keterangan))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f"Potongan '{jenis}' berhasil disimpan"}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def hapus_potongan(potongan_id: int) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('DELETE FROM potongan_config WHERE id=%s', (potongan_id,))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Potongan berhasil dihapus'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── LEMBUR RATE ───────────────────────────────────────────────────────────────
+
+def get_lembur_rate_list():
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT * FROM lembur_rate ORDER BY jabatan')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_lembur_rate_list: {e}')
+        return []
+
+
+def upsert_lembur_rate(jabatan: str, rate_per_jam: float, keterangan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('''
+            INSERT INTO lembur_rate (jabatan, rate_per_jam, keterangan)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (jabatan)
+            DO UPDATE SET rate_per_jam=EXCLUDED.rate_per_jam, keterangan=EXCLUDED.keterangan, diupdate=NOW()
+        ''', (jabatan, rate_per_jam, keterangan))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': f"Rate lembur '{jabatan}' berhasil disimpan"}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def hapus_lembur_rate(rate_id: int) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('DELETE FROM lembur_rate WHERE id=%s', (rate_id,))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Rate lembur berhasil dihapus'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+# ── LAPORAN GAJI ──────────────────────────────────────────────────────────────
+
+def get_laporan_gaji(tgl_awal: str, tgl_akhir: str) -> list:
+    """
+    Hitung laporan gaji per karyawan dalam rentang tanggal.
+    Kolom: nama, divisi, gaji_harian, hari_masuk, izin_sakit, lupa_absen,
+           telat_pulang_cepat, lembur_jam, gaji_kotor,
+           potongan_izin, potongan_lupa_absen, potongan_terlambat, bonus_lembur, total_terima
+    """
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Ambil semua absensi dalam range
+        cur.execute('''
+            SELECT a.karyawan_id, k.nama, k.nip, k.divisi,
+                   a.tanggal, a.check_in, a.check_out,
+                   sm.jam_masuk, sm.jam_pulang, sm.toleransi_menit
+            FROM absensi a
+            JOIN karyawan k ON k.id = a.karyawan_id
+            LEFT JOIN shift_master sm ON sm.id = a.shift_id
+            WHERE a.tanggal BETWEEN %s AND %s
+            ORDER BY a.karyawan_id, a.tanggal
+        ''', (tgl_awal, tgl_akhir))
+        absensi_rows = cur.fetchall()
+
+        # Ambil izin sakit dalam range
+        cur.execute('''
+            SELECT karyawan_id, COUNT(*) as jumlah
+            FROM izin_sakit
+            WHERE tanggal BETWEEN %s AND %s
+            GROUP BY karyawan_id
+        ''', (tgl_awal, tgl_akhir))
+        izin_map = {r['karyawan_id']: int(r['jumlah']) for r in cur.fetchall()}
+
+        # Ambil overtime approved
+        cur.execute('''
+            SELECT karyawan_id, tanggal, jam_mulai, jam_selesai
+            FROM overtime_request
+            WHERE status='approved'
+              AND tanggal BETWEEN %s AND %s
+        ''', (tgl_awal, tgl_akhir))
+        overtime_rows = cur.fetchall()
+
+        # Ambil gaji pokok
+        cur.execute('SELECT karyawan_id, gaji_harian FROM gaji_pokok')
+        gaji_map = {r['karyawan_id']: float(r['gaji_harian']) for r in cur.fetchall()}
+
+        # Ambil potongan config
+        cur.execute('SELECT jenis, nominal FROM potongan_config')
+        pot_map = {r['jenis']: float(r['nominal']) for r in cur.fetchall()}
+        pot_terlambat   = pot_map.get('terlambat', 0)
+        pot_lupa_absen  = pot_map.get('lupa_absen', 0)
+
+        # Ambil lembur rate
+        cur.execute('SELECT jabatan, rate_per_jam FROM lembur_rate')
+        lembur_map = {r['jabatan'].lower(): float(r['rate_per_jam']) for r in cur.fetchall()}
+
+        cur.close(); conn.close()
+
+        # Kelompokkan overtime per karyawan
+        ot_per_kar = {}
+        for ot in overtime_rows:
+            kid = ot['karyawan_id']
+            if kid not in ot_per_kar:
+                ot_per_kar[kid] = 0.0
+            try:
+                from datetime import datetime as dt
+                t1 = dt.strptime(str(ot['jam_mulai'])[:5], '%H:%M')
+                t2 = dt.strptime(str(ot['jam_selesai'])[:5], '%H:%M')
+                jam = max(0, (t2 - t1).total_seconds() / 3600)
+                ot_per_kar[kid] += jam
+            except Exception:
+                pass
+
+        # Kelompokkan absensi per karyawan
+        kar_map = {}
+        for r in absensi_rows:
+            kid = r['karyawan_id']
+            if kid not in kar_map:
+                kar_map[kid] = {
+                    'nama': r['nama'], 'nip': r['nip'], 'divisi': r['divisi'] or '-',
+                    'masuk': 0, 'lupa_absen': 0, 'terlambat': 0,
+                }
+            ci = r['check_in']
+            co = r['check_out']
+            if ci:
+                kar_map[kid]['masuk'] += 1
+                if not co:
+                    kar_map[kid]['lupa_absen'] += 1
+                # cek terlambat
+                if r['jam_masuk'] and r['toleransi_menit'] is not None:
+                    from datetime import datetime as dt, timedelta
+                    batas = (dt.combine(ci.date(), r['jam_masuk'])
+                             + timedelta(minutes=int(r['toleransi_menit'])))
+                    if ci > batas:
+                        kar_map[kid]['terlambat'] += 1
+            else:
+                kar_map[kid]['lupa_absen'] += 1
+
+        result = []
+        for i, (kid, d) in enumerate(sorted(kar_map.items(), key=lambda x: x[1]['nama'])):
+            gaji_harian  = gaji_map.get(kid, 0)
+            lembur_jam   = round(ot_per_kar.get(kid, 0), 2)
+            divisi_lower = d['divisi'].lower()
+            rate_lembur  = lembur_map.get(divisi_lower, list(lembur_map.values())[0] if lembur_map else 0)
+
+            izin_sakit_count = izin_map.get(kid, 0)
+            gaji_kotor        = gaji_harian * d['masuk']
+            p_lupa_absen      = pot_lupa_absen * d['lupa_absen']
+            p_terlambat       = pot_terlambat * d['terlambat']
+            bonus_lembur      = rate_lembur * lembur_jam
+            total_terima      = gaji_kotor - p_lupa_absen - p_terlambat + bonus_lembur
+
+            result.append({
+                'no':               i + 1,
+                'karyawan_id':      kid,
+                'nama':             d['nama'],
+                'nip':              d['nip'] or '-',
+                'divisi':           d['divisi'],
+                'gaji_harian':      gaji_harian,
+                'masuk':            d['masuk'],
+                'izin_sakit':       izin_sakit_count,
+                'lupa_absen':       d['lupa_absen'],
+                'terlambat':        d['terlambat'],
+                'lembur_jam':       lembur_jam,
+                'gaji_kotor':       gaji_kotor,
+                'potongan_lupa':    p_lupa_absen,
+                'potongan_terlambat': p_terlambat,
+                'bonus_lembur':     bonus_lembur,
+                'total_terima':     total_terima,
+            })
+        return result
+    except Exception as e:
+        print(f'[ERROR] get_laporan_gaji: {e}')
+        return []
+
+
+# ── IZIN SAKIT ───────────────────────────────────────────────────────────────
+
+def get_izin_sakit_list(karyawan_id: int = None, tgl_awal: str = None, tgl_akhir: str = None) -> list:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if karyawan_id:
+            cur.execute('''
+                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, k.divisi,
+                       iz.tanggal, iz.jenis, iz.keterangan, iz.dibuat
+                FROM izin_sakit iz JOIN karyawan k ON k.id = iz.karyawan_id
+                WHERE iz.karyawan_id = %s ORDER BY iz.tanggal DESC
+            ''', (karyawan_id,))
+        elif tgl_awal and tgl_akhir:
+            cur.execute('''
+                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, k.divisi,
+                       iz.tanggal, iz.jenis, iz.keterangan, iz.dibuat
+                FROM izin_sakit iz JOIN karyawan k ON k.id = iz.karyawan_id
+                WHERE iz.tanggal BETWEEN %s AND %s ORDER BY iz.tanggal DESC
+            ''', (tgl_awal, tgl_akhir))
+        else:
+            cur.execute('''
+                SELECT iz.id, iz.karyawan_id, k.nama, k.nip, k.divisi,
+                       iz.tanggal, iz.jenis, iz.keterangan, iz.dibuat
+                FROM izin_sakit iz JOIN karyawan k ON k.id = iz.karyawan_id
+                ORDER BY iz.tanggal DESC
+            ''')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close(); conn.close()
+        for r in rows:
+            r['tanggal'] = r['tanggal'].strftime('%Y-%m-%d') if r['tanggal'] else '-'
+            r['dibuat']  = r['dibuat'].strftime('%Y-%m-%d %H:%M') if r['dibuat'] else '-'
+        return rows
+    except Exception as e:
+        print(f'[ERROR] get_izin_sakit_list: {e}')
+        return []
+
+
+def tambah_izin_sakit(karyawan_id: int, tanggal: str, jenis: str, keterangan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'INSERT INTO izin_sakit (karyawan_id, tanggal, jenis, keterangan) VALUES (%s, %s, %s, %s)',
+            (karyawan_id, tanggal, jenis, keterangan or None)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Data izin/sakit berhasil ditambahkan'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def edit_izin_sakit(izin_id: int, tanggal: str, jenis: str, keterangan: str = '') -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute(
+            'UPDATE izin_sakit SET tanggal=%s, jenis=%s, keterangan=%s WHERE id=%s',
+            (tanggal, jenis, keterangan or None, izin_id)
+        )
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Data izin/sakit berhasil diupdate'}
+    except Exception as e:
+        return {'success': False, 'msg': str(e)}
+
+
+def hapus_izin_sakit(izin_id: int) -> dict:
+    try:
+        conn = get_db_connection()
+        cur  = conn.cursor()
+        cur.execute('DELETE FROM izin_sakit WHERE id=%s', (izin_id,))
+        conn.commit(); cur.close(); conn.close()
+        return {'success': True, 'msg': 'Data izin/sakit berhasil dihapus'}
     except Exception as e:
         return {'success': False, 'msg': str(e)}
 

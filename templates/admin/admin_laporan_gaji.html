@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Laporan Gaji · Face ID{% endblock %}
+{% block title_short %}<i class="bi bi-receipt me-1"></i> Laporan Gaji{% endblock %}
+{% block content %}
+<style>
+  .form-input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(1); opacity:.7; cursor:pointer; }
+  .th-group { background:rgba(79,70,229,.06); font-size:.68rem; text-align:center; }
+  .td-rp { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .td-num { text-align:right; }
+</style>
+
+<div class="page-header">
+  <div>
+    <h1><i class="bi bi-receipt" style="color:var(--accent);"></i> Laporan Gaji</h1>
+    <div class="page-sub">Rekap gaji, potongan, lembur, dan total terima karyawan</div>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="card p-3 mb-4">
+  <form method="GET" id="filter-form">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-sm-4">
+        <label class="form-label">Dari tanggal</label>
+        <input class="form-input" type="date" name="dari" value="{{ tgl_awal }}"
+               onchange="document.getElementById('filter-form').submit()">
+      </div>
+      <div class="col-12 col-sm-4">
+        <label class="form-label">Sampai tanggal</label>
+        <input class="form-input" type="date" name="sampai" value="{{ tgl_akhir }}"
+               onchange="document.getElementById('filter-form').submit()">
+      </div>
+      <div class="col-12 col-sm-4">
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn-accent flex-fill justify-content-center" type="submit">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          <a href="{{ url_for('admin_export_gaji', dari=tgl_awal, sampai=tgl_akhir) }}"
+             class="btn-ghost flex-fill justify-content-center">
+            <i class="bi bi-download"></i> Export Excel
+          </a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% if data %}
+<!-- Summary metrics -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-accent-soft"><i class="bi bi-people"></i></div>
+      <div class="metric-num">{{ data|length }}</div>
+      <div class="metric-lbl">Karyawan</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-green-soft"><i class="bi bi-cash"></i></div>
+      <div class="metric-num c-green" style="font-size:1.2rem;">
+        Rp {{ "{:,.0f}".format(data | sum(attribute='total_terima')) }}
+      </div>
+      <div class="metric-lbl">Total Terima</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-red-soft"><i class="bi bi-scissors"></i></div>
+      <div class="metric-num c-red" style="font-size:1.2rem;">
+        Rp {{ "{:,.0f}".format(data | sum(attribute='potongan_lupa') + data | sum(attribute='potongan_terlambat')) }}
+      </div>
+      <div class="metric-lbl">Total Potongan</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card metric-card">
+      <div class="metric-icon bg-amber-soft"><i class="bi bi-clock-history"></i></div>
+      <div class="metric-num c-amber" style="font-size:1.2rem;">
+        Rp {{ "{:,.0f}".format(data | sum(attribute='bonus_lembur')) }}
+      </div>
+      <div class="metric-lbl">Total Lembur</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card p-3">
+  <div class="table-wrap">
+    <table class="data-table" data-rows-per-page="15">
+      <thead>
+        <tr>
+          <th rowspan="2" style="vertical-align:middle;">No</th>
+          <th rowspan="2" style="vertical-align:middle;">Nama Karyawan</th>
+          <th rowspan="2" style="vertical-align:middle;">Divisi/Jabatan</th>
+          <th rowspan="2" style="vertical-align:middle;">Gaji Pokok/Hari</th>
+          <th class="th-group" colspan="3">Kehadiran</th>
+          <th rowspan="2" style="vertical-align:middle;">Lembur (Jam)</th>
+          <th rowspan="2" style="vertical-align:middle;">Gaji Kotor</th>
+          <th class="th-group" colspan="2">Potongan</th>
+          <th rowspan="2" style="vertical-align:middle;">Lembur</th>
+          <th rowspan="2" style="vertical-align:middle;color:var(--green);">Total Terima</th>
+        </tr>
+        <tr>
+          <th class="th-group">Masuk</th>
+          <th class="th-group">Lupa Absen</th>
+          <th class="th-group">Telat/Pulang Cepat</th>
+          <th class="th-group">Lupa Absen</th>
+          <th class="th-group">Terlambat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in data %}
+        <tr>
+          <td class="td-muted">{{ d.no }}</td>
+          <td><strong>{{ d.nama }}</strong><br><span class="td-muted" style="font-size:.74rem;">{{ d.nip }}</span></td>
+          <td class="td-muted">{{ d.divisi }}</td>
+          <td class="td-rp">Rp {{ "{:,.0f}".format(d.gaji_harian) }}</td>
+          <td class="td-num"><span class="status-badge bg-green-soft" style="border:1px solid rgba(34,197,94,.25);">{{ d.masuk }}</span></td>
+          <td class="td-num">
+            {% if d.lupa_absen > 0 %}
+              <span class="status-badge" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">{{ d.lupa_absen }}</span>
+            {% else %}<span class="td-muted">0</span>{% endif %}
+          </td>
+          <td class="td-num">
+            {% if d.terlambat > 0 %}
+              <span class="status-badge badge-lambat" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">{{ d.terlambat }}</span>
+            {% else %}<span class="td-muted">0</span>{% endif %}
+          </td>
+          <td class="td-num td-muted">{{ d.lembur_jam }}</td>
+          <td class="td-rp"><strong>Rp {{ "{:,.0f}".format(d.gaji_kotor) }}</strong></td>
+          <td class="td-rp td-muted">{% if d.potongan_lupa %}<span style="color:var(--red);">-Rp {{ "{:,.0f}".format(d.potongan_lupa) }}</span>{% else %}–{% endif %}</td>
+          <td class="td-rp td-muted">{% if d.potongan_terlambat %}<span style="color:var(--red);">-Rp {{ "{:,.0f}".format(d.potongan_terlambat) }}</span>{% else %}–{% endif %}</td>
+          <td class="td-rp">{% if d.bonus_lembur %}<span style="color:var(--green);">+Rp {{ "{:,.0f}".format(d.bonus_lembur) }}</span>{% else %}–{% endif %}</td>
+          <td class="td-rp"><strong style="color:var(--green);">Rp {{ "{:,.0f}".format(d.total_terima) }}</strong></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="13" style="text-align:center;color:var(--muted);padding:36px;">
+            Tidak ada data di rentang tanggal ini
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

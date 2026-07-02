@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Izin & Sakit · Admin{% endblock %}
+{% block title_short %}<i class="bi bi-bandaid"></i> Izin & Sakit{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1><i class="bi bi-bandaid"></i> Kelola Izin & Sakit</h1>
+    <div class="page-sub">Input dan kelola data izin/sakit karyawan</div>
+  </div>
+  <button class="btn-accent" onclick="openTambah()">
+    <i class="bi bi-plus-lg"></i> Tambah
+  </button>
+</div>
+
+{% set n_izin  = data | selectattr('jenis','eq','izin')  | list | length %}
+{% set n_sakit = data | selectattr('jenis','eq','sakit') | list | length %}
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-sm-4">
+    <div class="card metric-card">
+      <div class="metric-icon bg-blue-soft"><i class="bi bi-bandaid"></i></div>
+      <div class="metric-num c-accent">{{ data | length }}</div>
+      <div class="metric-lbl">Total Data</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-4">
+    <div class="card metric-card">
+      <div class="metric-icon bg-amber-soft"><i class="bi bi-calendar-x"></i></div>
+      <div class="metric-num c-amber">{{ n_izin }}</div>
+      <div class="metric-lbl">Izin</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-4">
+    <div class="card metric-card">
+      <div class="metric-icon bg-red-soft"><i class="bi bi-thermometer-half"></i></div>
+      <div class="metric-num c-red">{{ n_sakit }}</div>
+      <div class="metric-lbl">Sakit</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="card mb-3">
+  <div class="card-body" style="padding:16px;">
+    <form method="GET" class="d-flex flex-wrap gap-2 align-items-end">
+      <div>
+        <label class="form-label" style="font-size:.78rem;">Dari</label>
+        <input type="date" name="dari" value="{{ tgl_awal }}" class="form-input" style="width:150px;color-scheme:black;color:#000;">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:.78rem;">Sampai</label>
+        <input type="date" name="sampai" value="{{ tgl_akhir }}" class="form-input" style="width:150px;color-scheme:black;color:#000;">
+      </div>
+      <button type="submit" class="btn-accent"><i class="bi bi-search"></i> Filter</button>
+    </form>
+  </div>
+</div>
+
+<!-- Tabel -->
+<div class="card">
+  <div class="card-body">
+    <div class="card-header-custom">
+      <div class="card-title-text"><i class="bi bi-table"></i> Data Izin & Sakit</div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Nama</th>
+            <th>NIP</th>
+            <th>Divisi</th>
+            <th>Tanggal</th>
+            <th>Jenis</th>
+            <th>Keterangan</th>
+            <th>Dibuat</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in data %}
+          <tr>
+            <td class="td-muted">{{ loop.index }}</td>
+            <td><strong>{{ r.nama }}</strong></td>
+            <td class="td-muted">{{ r.nip or '-' }}</td>
+            <td class="td-muted">{{ r.divisi or '-' }}</td>
+            <td style="white-space:nowrap;">{{ r.tanggal }}</td>
+            <td>
+              {% if r.jenis == 'sakit' %}
+              <span class="status-badge" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">
+                <i class="bi bi-thermometer-half"></i> Sakit
+              </span>
+              {% else %}
+              <span class="status-badge badge-karyawan">
+                <i class="bi bi-calendar-x"></i> Izin
+              </span>
+              {% endif %}
+            </td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="{{ r.keterangan or '' }}">{{ r.keterangan or '-' }}</td>
+            <td class="td-muted" style="white-space:nowrap;">{{ r.dibuat }}</td>
+            <td>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn-ghost btn-sm-icon"
+                  onclick="openEdit({{ r.id }}, '{{ r.tanggal }}', '{{ r.jenis }}', '{{ (r.keterangan or '')|e }}')">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <form method="POST" action="/admin/izin-sakit/hapus/{{ r.id }}"
+                  onsubmit="return confirm('Hapus data izin/sakit ini?')">
+                  <button type="submit" class="btn-ghost btn-sm-icon" style="color:var(--red);">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center" style="color:var(--muted);padding:32px;">Tidak ada data</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah -->
+<div class="modal fade" id="modalTambah" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="/admin/izin-sakit/tambah">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle c-accent"></i> Tambah Izin / Sakit</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Karyawan</label>
+            <select name="karyawan_id" class="form-input" required>
+              <option value="">-- Pilih Karyawan --</option>
+              {% for k in karyawan %}
+              <option value="{{ k.id }}">{{ k.nama }}{% if k.nip %} ({{ k.nip }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tanggal</label>
+            <input type="date" name="tanggal" class="form-input" style="color-scheme:light;color:#000;" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Jenis</label>
+            <select name="jenis" class="form-input" required>
+              <option value="izin">Izin</option>
+              <option value="sakit">Sakit</option>
+            </select>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Keterangan (opsional)</label>
+            <textarea name="keterangan" class="form-input" rows="2" placeholder="Contoh: Keperluan keluarga, demam…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn-accent"><i class="bi bi-save"></i> Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div class="modal fade" id="modalEdit" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="form-edit" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil c-accent"></i> Edit Izin / Sakit</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tanggal</label>
+            <input type="date" id="edit-tanggal" name="tanggal" class="form-input" style="color-scheme:light;color:#000;" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Jenis</label>
+            <select id="edit-jenis" name="jenis" class="form-input" required>
+              <option value="izin">Izin</option>
+              <option value="sakit">Sakit</option>
+            </select>
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Keterangan (opsional)</label>
+            <textarea id="edit-keterangan" name="keterangan" class="form-input" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn-accent"><i class="bi bi-save"></i> Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  function openTambah() {
+    new bootstrap.Modal(document.getElementById('modalTambah')).show();
+  }
+  function openEdit(id, tanggal, jenis, keterangan) {
+    document.getElementById('form-edit').action = '/admin/izin-sakit/edit/' + id;
+    document.getElementById('edit-tanggal').value = tanggal;
+    document.getElementById('edit-jenis').value = jenis;
+    document.getElementById('edit-keterangan').value = keterangan;
+    new bootstrap.Modal(document.getElementById('modalEdit')).show();
+  }
+</script>
+{% endblock %}

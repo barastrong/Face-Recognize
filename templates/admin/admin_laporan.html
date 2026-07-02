@@ -75,9 +75,9 @@
   </div>
   <div class="col-6 col-lg-3">
     <div class="card metric-card">
-      <div class="metric-icon bg-amber-soft"><i class="bi bi-clock"></i></div>
-      <div class="metric-num c-amber">{{ data | selectattr('check_out','ne','-') | list | length }}</div>
-      <div class="metric-lbl">Sudah Pulang</div>
+      <div class="metric-icon bg-red-soft"><i class="bi bi-exclamation-circle"></i></div>
+      <div class="metric-num c-red">{{ data | selectattr('lupa_absen') | list | length }}</div>
+      <div class="metric-lbl">Lupa Absen Pulang</div>
     </div>
   </div>
 </div>
@@ -90,7 +90,7 @@
         <tr>
           <th>No</th><th>Tanggal</th><th>NIP</th><th>Nama</th><th>Divisi</th>
           <th>Shift</th><th>Jam Shift</th><th>Check In</th><th>Check Out</th>
-          <th>Durasi</th><th>Status</th><th>Lokasi</th>
+          <th>Durasi</th><th>Status</th><th>Lupa Absen</th><th>Lokasi</th>
         </tr>
       </thead>
       <tbody>
@@ -133,6 +133,13 @@
               <span class="status-badge badge-noshift">Tanpa Shift</span>
             {% else %}
               <span class="status-badge badge-lambat"><i class="bi bi-alarm" style="font-size:11px;"></i> {{ a.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if a.lupa_absen %}
+              <span class="status-badge" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25);">Lupa Absen</span>
+            {% else %}
+              <span class="td-muted">–</span>
             {% endif %}
           </td>
           <td class="td-muted" style="font-size:.76rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
